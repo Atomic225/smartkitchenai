@@ -515,7 +515,7 @@ def _gemini_handle(db: Session, text: str) -> tuple[str, bool, list[dict], bool]
 
     settings = get_settings()
     client = OpenAI(
-        api_key=settings.gemini_api_key,
+        api_key=settings.gemini_api_key.strip().strip('"').strip("'"),
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         timeout=45.0,
         max_retries=1,
@@ -629,9 +629,22 @@ def chat(db: Session, text: str) -> dict:
         try:
             reply, needs, actions, used_ai = _gemini_handle(db, text)
         except Exception as exc:  # noqa: BLE001
+            detail = ""
+            if hasattr(exc, "response") and hasattr(exc.response, "text"):
+                try:
+                    parsed = json.loads(exc.response.text)
+                    if isinstance(parsed, list) and parsed:
+                        detail = parsed[0].get("error", {}).get("message", "")
+                    elif isinstance(parsed, dict):
+                        detail = parsed.get("error", {}).get("message", "")
+                except Exception:
+                    detail = str(exc.response.text)[:200]
+            if not detail and hasattr(exc, "message") and exc.message:
+                detail = str(exc.message)
+            err_str = f"{exc} ({detail})" if detail else str(exc)
             fallback, needs, actions = _offline_handle(db, text)
             reply = (
-                f"Gemini call failed ({exc}). I used the offline English/Hinglish parser instead.\n\n{fallback}"
+                f"Gemini call failed ({err_str}). I used the offline English/Hinglish parser instead.\n\n{fallback}"
             )
             used_ai = False
     elif settings.openai_configured():

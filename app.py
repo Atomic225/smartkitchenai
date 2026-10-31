@@ -20,8 +20,26 @@ if str(ROOT / "frontend") not in sys.path:
     sys.path.insert(0, str(ROOT / "frontend"))
 
 
+def _clean_val(v: object) -> str:
+    s = str(v).strip()
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1].strip()
+    return s
+
+
 def _load_streamlit_secrets() -> None:
-    """Read Streamlit Cloud secrets.toml and inject into os.environ so FastAPI sees them."""
+    """Read Streamlit Cloud secrets and inject into os.environ so FastAPI sees them."""
+    # 1. Try reading from st.secrets if available
+    try:
+        import streamlit as st
+        for k in st.secrets:
+            v = st.secrets[k]
+            if isinstance(v, (str, int, float, bool)):
+                os.environ[str(k)] = _clean_val(v)
+    except Exception:
+        pass
+
+    # 2. Try reading from secrets.toml files on disk
     candidates = [
         ROOT / ".streamlit" / "secrets.toml",
         Path.home() / ".streamlit" / "secrets.toml",
@@ -35,15 +53,14 @@ def _load_streamlit_secrets() -> None:
                 data = tomllib.load(f)
             for k, v in data.items():
                 if isinstance(v, (str, int, float, bool)):
-                    os.environ[str(k)] = str(v)
+                    os.environ[str(k)] = _clean_val(v)
         except Exception:
-            # Fallback simple line parser if tomllib is unavailable
             try:
                 for line in p.read_text(encoding="utf-8").splitlines():
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
                         k, v = line.split("=", 1)
-                        os.environ[k.strip()] = v.strip().strip("\"'")
+                        os.environ[k.strip()] = _clean_val(v)
             except Exception:
                 pass
 
