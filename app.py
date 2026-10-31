@@ -1,6 +1,6 @@
 """Root entrypoint for Streamlit cloud platforms (Hugging Face Spaces Streamlit SDK, Streamlit Community Cloud).
 
-Starts the FastAPI backend if not already running, then loads the Streamlit dashboard.
+Loads secrets into os.environ, starts the FastAPI backend, then launches the Streamlit dashboard.
 """
 
 from __future__ import annotations
@@ -20,6 +20,34 @@ if str(ROOT / "frontend") not in sys.path:
     sys.path.insert(0, str(ROOT / "frontend"))
 
 
+def _load_streamlit_secrets() -> None:
+    """Read Streamlit Cloud secrets.toml and inject into os.environ so FastAPI sees them."""
+    candidates = [
+        ROOT / ".streamlit" / "secrets.toml",
+        Path.home() / ".streamlit" / "secrets.toml",
+    ]
+    for p in candidates:
+        if not p.is_file():
+            continue
+        try:
+            import tomllib
+            with open(p, "rb") as f:
+                data = tomllib.load(f)
+            for k, v in data.items():
+                if isinstance(v, (str, int, float, bool)):
+                    os.environ[str(k)] = str(v)
+        except Exception:
+            # Fallback simple line parser if tomllib is unavailable
+            try:
+                for line in p.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ[k.strip()] = v.strip().strip("\"'")
+            except Exception:
+                pass
+
+
 def _is_port_open(host: str, port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.3)
@@ -28,6 +56,8 @@ def _is_port_open(host: str, port: int) -> bool:
 
 def _ensure_backend_running() -> None:
     """Start uvicorn in the background if port 8000 is not yet listening."""
+    _load_streamlit_secrets()
+
     if _is_port_open("127.0.0.1", 8000):
         return
 
