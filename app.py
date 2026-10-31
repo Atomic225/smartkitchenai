@@ -29,7 +29,6 @@ def _clean_val(v: object) -> str:
 
 def _load_streamlit_secrets() -> None:
     """Read Streamlit Cloud secrets and inject into os.environ so FastAPI sees them."""
-    # 1. Try reading from st.secrets if available
     try:
         import streamlit as st
         for k in st.secrets:
@@ -39,7 +38,6 @@ def _load_streamlit_secrets() -> None:
     except Exception:
         pass
 
-    # 2. Try reading from secrets.toml files on disk
     candidates = [
         ROOT / ".streamlit" / "secrets.toml",
         Path.home() / ".streamlit" / "secrets.toml",
@@ -72,11 +70,20 @@ def _is_port_open(host: str, port: int) -> bool:
 
 
 def _ensure_backend_running() -> None:
-    """Start uvicorn in the background if port 8000 is not yet listening."""
+    """Start uvicorn with current secrets and code."""
     _load_streamlit_secrets()
 
+    # If backend is already running on port 8000 from a previous hot-reload,
+    # don't leave stale code running on Linux cloud instances
     if _is_port_open("127.0.0.1", 8000):
-        return
+        if sys.platform != "win32":
+            try:
+                subprocess.run(["pkill", "-9", "-f", "uvicorn"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                time.sleep(0.4)
+            except Exception:
+                pass
+        else:
+            return
 
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join([str(ROOT), str(ROOT / "frontend"), env.get("PYTHONPATH", "")])
