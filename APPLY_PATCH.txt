@@ -1,0 +1,30 @@
+SMART KITCHEN AI — GEMINI AGENT FIX PATCH
+
+Apply this patch to your existing project folder:
+C:\Users\shubh\OneDrive\Documents\Desktop\smartkitchenai
+
+1. Stop Smart Kitchen AI first (in the PowerShell window running run.py, press Ctrl+C).
+2. Extract this ZIP directly into the smartkitchenai project folder.
+3. When Windows asks whether to replace files, choose Replace the files in the destination.
+4. Start the app again:
+   .\.venv\Scripts\python.exe run.py
+5. Open http://localhost:8501 and test:
+   "Show me the weekly menu currently saved in my database. Do not modify anything."
+
+The patch does NOT contain .env, API keys, the SQLite database, or .venv.
+Do not upload or share your .env file.
+
+What this patch changes:
+- Removes the empty-parameter schema from rebuild_grocery_list (a likely trigger for the full Gemini tool-list HTTP 400).
+- Allows show_menu with no date to read the complete latest saved week, not just today's meals.
+- Adds a server-side guard to prevent mutating tools from running when the request explicitly says read-only / do not save / do not modify.
+- Stops the latest user prompt from being duplicated in Gemini conversation history.
+- Aligns the default/test model with gemini-3.5-flash-lite.
+- Improves the offline-fallback label.
+- Adds regression tests for these behaviours.
+
+Verification performed in the review environment:
+- Python compileall: passed.
+- pytest: 12 passed.
+- The local test environment lacked APScheduler; tests were run with a minimal scheduler import stub because the application is configured not to start the scheduler in test mode.
+- No live Gemini API call was run from this patch environment. Your successful isolated Gemini function-call test remains the live verification for one tool declaration; the full app's tool list still needs to be retested after applying this patch.

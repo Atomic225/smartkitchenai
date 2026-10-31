@@ -1,0 +1,16 @@
+SMART KITCHEN AI — GEMINI 400 FIX (SMALL PATCH)
+
+Replace only this file in your existing project:
+app/services/ai_chat.py
+
+What changed:
+- Removed temperature=0.2 from Gemini API calls.
+- Gemini 3.x model guidance recommends leaving sampling parameters at their default values; newer model generations may reject custom temperature with HTTP 400.
+- The legacy OpenAI call is unchanged.
+- No database, .env, API key, frontend or other files are included.
+
+Apply:
+1. Stop Smart Kitchen AI (Ctrl+C in the running PowerShell window).
+2. Extract this ZIP to the project root and replace app/services/ai_chat.py when prompted.
+3. Start again with: .\.venv\Scripts\python.exe run.py
+4. Test: Show me the complete weekly menu saved in my database. Do not modify anything.

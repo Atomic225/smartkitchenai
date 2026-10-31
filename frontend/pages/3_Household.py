@@ -1,0 +1,84 @@
+import streamlit as st
+
+from api import ApiError, delete, get, post, put
+from ui import inject_theme
+
+st.set_page_config(page_title="Household", page_icon="👨‍👩‍👧", layout="wide")
+inject_theme()
+st.title("Household")
+
+try:
+    household = get("/api/household")
+    members = get("/api/members")
+except ApiError as exc:
+    st.error(str(exc))
+    st.stop()
+
+with st.form("household"):
+    name = st.text_input("Household name", household["name"])
+    size = st.number_input("Household size (used to scale groceries)", min_value=1, value=int(household["size"]))
+    weekday = st.text_input("Weekday meals (comma separated)", ", ".join(household["weekday_meals"]))
+    weekend = st.text_input("Weekend meals (comma separated)", ", ".join(household["weekend_meals"]))
+    reminder = st.selectbox("WhatsApp reminder days before need", [2, 3], index=0 if household["grocery_reminder_days"] == 2 else 1)
+    auto_menu = st.checkbox("Auto-create weekly menu every Sunday 18:00 IST", value=household["auto_weekly_menu"])
+    chef_enabled = st.checkbox("Enable chef calling", value=household["chef_call_enabled"])
+    chef_time = st.text_input("Chef call time (HH:MM, Asia/Kolkata)", household["chef_call_time"])
+    language = st.selectbox("Chef language", ["hinglish", "hindi"], index=0 if household["chef_language"] == "hinglish" else 1)
+    if st.form_submit_button("Save household"):
+        put(
+            "/api/household",
+            json={
+                "name": name,
+                "size": int(size),
+                "weekday_meals": [p.strip() for p in weekday.split(",") if p.strip()],
+                "weekend_meals": [p.strip() for p in weekend.split(",") if p.strip()],
+                "grocery_reminder_days": int(reminder),
+                "auto_weekly_menu": auto_menu,
+                "chef_call_enabled": chef_enabled,
+                "chef_call_time": chef_time,
+                "chef_language": language,
+            },
+        )
+        st.success("Saved")
+        st.rerun()
+
+st.subheader("Members")
+for member in members:
+    with st.expander(f"{member['name']} · {member['role']}" + (" · cook" if member["is_cook"] else "")):
+        with st.form(f"m-{member['id']}"):
+            n = st.text_input("Name", member["name"])
+            role = st.selectbox("Role", ["admin", "member", "cook"], index=["admin", "member", "cook"].index(member["role"]) if member["role"] in ["admin", "member", "cook"] else 1)
+            phone = st.text_input("Phone", member["phone"])
+            wa = st.text_input("WhatsApp number (country code, no +)", member["whatsapp_phone"])
+            notify = st.checkbox("Send grocery WhatsApp", value=member["notify"])
+            is_cook = st.checkbox("This person is the cook (receives Exotel calls)", value=member["is_cook"])
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Update"):
+                put(
+                    f"/api/members/{member['id']}",
+                    json={"name": n, "role": role, "phone": phone, "whatsapp_phone": wa, "notify": notify, "is_cook": is_cook},
+                )
+                st.rerun()
+            if c2.form_submit_button("Delete"):
+                delete(f"/api/members/{member['id']}")
+                st.rerun()
+
+st.subheader("Add member")
+with st.form("add"):
+    n = st.text_input("Name")
+    phone = st.text_input("Phone / WhatsApp")
+    notify = st.checkbox("Notify on grocery list", value=True)
+    is_cook = st.checkbox("Cook")
+    if st.form_submit_button("Add") and n.strip():
+        post(
+            "/api/members",
+            json={
+                "name": n,
+                "phone": phone,
+                "whatsapp_phone": phone,
+                "notify": notify,
+                "is_cook": is_cook,
+                "role": "cook" if is_cook else "member",
+            },
+        )
+        st.rerun()
