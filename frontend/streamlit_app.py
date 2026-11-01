@@ -197,7 +197,16 @@ with col_call2:
                         if res.get("provider_id"):
                             st.caption(f"Call SID: `{res.get('provider_id')}`")
                     else:
-                        st.warning(f"Status: {res.get('status')} — {res.get('detail')}")
+                        detail = res.get("detail", "")
+                        if "573002" in detail or "verified recipient" in detail.lower():
+                            st.error(
+                                f"⚠️ **Twilio Trial Account Restriction:**\n\n"
+                                f"The number `{cook_phone_input}` has not been added to your Twilio verified list yet. "
+                                f"Twilio free trial accounts can only call numbers you verify in your dashboard.\n\n"
+                                f"👉 **[Click here to add & verify this number in Twilio](https://console.twilio.com/us1/develop/phone-numbers/manage/verified-caller-ids)** (Takes 30 seconds via OTP)."
+                            )
+                        else:
+                            st.warning(f"Status: {res.get('status')} — {detail}")
                 except ApiError as exc:
                     st.error(f"Call failed: {exc}")
 
