@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import urllib.parse
 
 import httpx
 
@@ -71,12 +72,15 @@ def place_call(cook_phone: str, script_text: str = "") -> CallResult:
             '</Response>'
         )
 
+        encoded_twiml = urllib.parse.quote(twiml)
+        voice_url = f"https://twimlets.com/echo?Twiml={encoded_twiml}"
+
         url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid.strip()}/Calls.json"
         auth = (settings.twilio_account_sid.strip(), settings.twilio_auth_token.strip())
         data = {
             "To": target_phone if target_phone.startswith("+") else f"+91{target_phone.lstrip('0')}",
             "From": settings.twilio_phone_number.strip(),
-            "Twiml": twiml,
+            "Url": voice_url,
         }
 
         try:
