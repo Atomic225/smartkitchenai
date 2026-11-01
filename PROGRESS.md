@@ -201,3 +201,6 @@ Reviewed the source archive uploaded by the user. The actual Gemini 400 was not 
 Also corrected the weekly menu read tool: `show_menu` without a date now returns the complete latest saved weekly menu; a supplied `meal_date` still returns one day. Updated agent instructions and added a server-side read-only guard so explicit preview/show/do-not-save requests cannot execute mutating tools. Destructive actions still require clear user intent. Fixed duplicate submission of the latest user message in Gemini chat history. Updated the test model from retired `gemini-2.0-flash` to `gemini-3.5-flash-lite` and improved fallback wording.
 
 Added regression tests for non-empty Gemini tool schemas and retrieving all meals from the latest saved weekly menu. These changes have not yet been tested against the user's live API key; a real Gemini test is still required after applying the patch.
+
+
+8. **Flat Passcode Lock Screen & Roommate Profile Switcher** — Secured all dashboard pages behind a shared flat passcode (`chakna302x`). Visitors are greeted with a clean lock screen. Once unlocked, an active flatmate selector appears in the sidebar to toggle between roommates (`Shubh`, `Aman`, etc.) with a 1-click "Lock Kitchen" sign-out button. Passcode can be re-configured on the Settings page anytime.
