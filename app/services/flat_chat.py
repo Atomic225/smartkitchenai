@@ -149,7 +149,8 @@ def process_incoming_group_message(db: Session, text: str, sender_name: str = ""
         .first()
     )
     if not session:
-        return "No active meal vote right now. The daily menu check starts at 6:00 PM!"
+        tomorrow = today() + timedelta(days=1)
+        session = get_or_create_evening_session(db, tomorrow)
 
     options = json.loads(session.options_json)
     household = get_household(db)
@@ -235,5 +236,9 @@ def process_incoming_group_message(db: Session, text: str, sender_name: str = ""
                 f"Anyone can change this until groceries are ordered.\n"
                 f"👉 Please order groceries and reply *'Ordered'* when done!"
             )
+
+    # General query about menu or options (e.g. "What are the dinner options?")
+    if any(w in text_clean for w in ["what", "option", "menu", "choices", "dinner", "lunch", "kya", "list", "options"]):
+        return format_kickoff_message(session)
 
     return ""
