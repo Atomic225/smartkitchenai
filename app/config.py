@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:8501"
     database_url: str = "sqlite:///./data/smartkitchen.db"
     timezone: str = "Asia/Kolkata"
+    flat_passcode: str = "chakna302x"
 
     # ---------- Gemini (primary AI provider) ----------
     gemini_api_key: str = ""

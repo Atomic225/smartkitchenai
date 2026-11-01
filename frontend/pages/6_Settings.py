@@ -1,10 +1,11 @@
 import streamlit as st
 
 from api import ApiError, get, post
-from ui import inject_theme, show_integrations
+from ui import inject_theme, require_auth, show_integrations
 
 st.set_page_config(page_title="Settings", page_icon="⚙️", layout="wide")
 inject_theme()
+require_auth()
 st.title("Settings and credentials")
 show_integrations()
 
@@ -69,9 +70,15 @@ with st.form("secrets"):
     exo_app = st.text_input("EXOTEL_APP_ID")
     exo_cb = st.text_input("EXOTEL_STATUS_CALLBACK_URL", placeholder="https://your-public-host/webhooks/exotel")
 
+    
+    # ── Flat Security ────────────────────────────────────────────────────────
+    st.subheader("🔒 Flat Security")
+    flat_code = st.text_input("FLAT_PASSCODE", value=env.get("flat_passcode") or "chakna302x", help="The shared passcode your flatmates use to unlock the kitchen.")
+
     if st.form_submit_button("💾 Save credentials to .env"):
         payload = {
             "GEMINI_MODEL": gemini_model,
+            "FLAT_PASSCODE": flat_code.strip(),
             "OPENAI_MODEL": openai_model,
             "WHATSAPP_PHONE_NUMBER_ID": wa_phone,
             "WHATSAPP_BUSINESS_ACCOUNT_ID": wa_biz,

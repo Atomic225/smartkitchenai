@@ -3,10 +3,11 @@ from collections import defaultdict
 import streamlit as st
 
 from api import ApiError, get, post
-from ui import inject_theme, show_integrations
+from ui import inject_theme, require_auth, show_integrations
 
 st.set_page_config(page_title="Grocery", page_icon="🛒", layout="wide")
 inject_theme()
+require_auth()
 st.title("Grocery list")
 show_integrations()
 

@@ -146,3 +146,12 @@ def test_explicit_read_only_instruction_is_detected():
     assert _is_read_only_request("Show me my weekly menu. Do not modify anything.")
     assert _is_read_only_request("Generate a draft but do not save until I approve.")
     assert not _is_read_only_request("Change Monday lunch to Rajma.")
+
+def test_flat_passcode_auth(client):
+    # Incorrect passcode
+    bad = client.post("/api/auth/verify", json={"passcode": "wrongcode"}).json()
+    assert bad["ok"] is False
+
+    # Correct passcode
+    good = client.post("/api/auth/verify", json={"passcode": "chakna302x"}).json()
+    assert good["ok"] is True

@@ -1,6 +1,6 @@
 import streamlit as st
 
-from api import ApiError, get
+from api import ApiError, get, post
 
 
 def inject_theme() -> None:
@@ -23,6 +23,68 @@ def inject_theme() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def require_auth() -> str | None:
+    """Enforce flat passcode authentication across all dashboard pages."""
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+
+    if not st.session_state["authenticated"]:
+        st.markdown(
+            """
+            <div style="background: white; border: 1px solid #dce6df; border-radius: 16px; padding: 24px; max-width: 480px; margin: 2rem auto; text-align: center;">
+                <h2 style="font-family: Georgia, serif; color: #1f3d2b; margin-top: 0;">🔒 Smart Kitchen</h2>
+                <p style="color: #4b6354; font-size: 0.95rem;">Enter your flat's passcode to unlock the kitchen dashboard.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        col1, col2, col3 = st.columns([1, 1.4, 1])
+        with col2:
+            with st.form("unlock_form"):
+                entered = st.text_input("Flat Passcode", type="password", placeholder="Enter flat passcode...", label_visibility="collapsed")
+                submitted = st.form_submit_button("🔓 Unlock Kitchen", use_container_width=True)
+                if submitted:
+                    try:
+                        res = post("/api/auth/verify", json={"passcode": entered})
+                        if res and res.get("ok"):
+                            st.session_state["authenticated"] = True
+                            st.success("Passcode accepted! Unlocking kitchen...")
+                            st.rerun()
+                        else:
+                            st.error("Incorrect passcode. Ask your flatmates!")
+                    except Exception as exc:
+                        st.error(f"Cannot reach kitchen backend: {exc}")
+        st.stop()
+
+    # User is authenticated: render flatmate profile picker in sidebar
+    with st.sidebar:
+        members = []
+        try:
+            members = get("/api/members") or []
+        except Exception:
+            pass
+        member_names = [m["name"] for m in members] if members else ["Flatmate"]
+        if "active_user" not in st.session_state or st.session_state["active_user"] not in member_names:
+            st.session_state["active_user"] = member_names[0]
+
+        st.caption("👤 Active Flatmate:")
+        idx = member_names.index(st.session_state["active_user"]) if st.session_state["active_user"] in member_names else 0
+        active = st.selectbox(
+            "Who is using the kitchen?",
+            options=member_names,
+            index=idx,
+            label_visibility="collapsed",
+        )
+        st.session_state["active_user"] = active
+
+        if st.button("🔒 Lock Kitchen", use_container_width=True):
+            st.session_state["authenticated"] = False
+            st.rerun()
+        st.markdown("---")
+
+    return st.session_state.get("active_user")
 
 
 def show_integrations() -> list[dict]:

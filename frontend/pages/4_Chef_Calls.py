@@ -1,10 +1,11 @@
 import streamlit as st
 
 from api import ApiError, get, post
-from ui import inject_theme, show_integrations
+from ui import inject_theme, require_auth, show_integrations
 
 st.set_page_config(page_title="Chef Calls", page_icon="📞", layout="wide")
 inject_theme()
+require_auth()
 st.title("Chef calling")
 show_integrations()
 st.write("Calls are placed only when Exotel credentials are present. Otherwise the row is stored as `not_configured` and no phone rings.")

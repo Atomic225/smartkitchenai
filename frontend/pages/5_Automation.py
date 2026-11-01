@@ -1,10 +1,11 @@
 import streamlit as st
 
 from api import ApiError, get, post
-from ui import inject_theme, show_integrations
+from ui import inject_theme, require_auth, show_integrations
 
 st.set_page_config(page_title="Automation", page_icon="⏰", layout="wide")
 inject_theme()
+require_auth()
 st.title("Automation")
 show_integrations()
 

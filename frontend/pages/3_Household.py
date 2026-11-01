@@ -1,10 +1,11 @@
 import streamlit as st
 
 from api import ApiError, delete, get, post, put
-from ui import inject_theme
+from ui import inject_theme, require_auth
 
 st.set_page_config(page_title="Household", page_icon="👨‍👩‍👧", layout="wide")
 inject_theme()
+require_auth()
 st.title("Household")
 
 try:

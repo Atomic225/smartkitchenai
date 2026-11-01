@@ -65,12 +65,23 @@ def run_job(job_name: str, db: Session = Depends(get_db)):
     return {"job": job_name, "result": fn()}
 
 
+
+@router.post("/auth/verify")
+def verify_passcode(payload: dict):
+    settings = get_settings()
+    expected = settings.flat_passcode.strip()
+    if not expected:
+        return {"ok": True, "required": False}
+    entered = str(payload.get("passcode", "")).strip()
+    return {"ok": entered == expected, "required": True}
+
 @router.get("/settings/env")
 def env_status():
     settings = get_settings()
     return {
         "app_name": settings.app_name,
         "timezone": settings.timezone,
+        "flat_passcode": settings.flat_passcode,
         # Gemini (primary)
         "gemini_model": settings.gemini_model,
         "gemini_api_key_set": settings.gemini_configured(),
@@ -91,6 +102,7 @@ def env_status():
 def write_env(payload: dict):
     allowed = {
         # Gemini
+        "FLAT_PASSCODE",
         "GEMINI_API_KEY",
         "GEMINI_MODEL",
         # OpenAI (legacy)
