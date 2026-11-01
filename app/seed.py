@@ -348,15 +348,15 @@ def seed_if_empty(db: Session) -> None:
             [
                 Member(
                     household_id=household.id,
-                    name="Ananya Sharma",
+                    name="Shubh",
                     role="admin",
-                    phone="919800000001",
-                    whatsapp_phone="919800000001",
+                    phone="+919229247588",
+                    whatsapp_phone="+919229247588",
                     notify=True,
                 ),
                 Member(
                     household_id=household.id,
-                    name="Rohan Sharma",
+                    name="Rishu",
                     role="member",
                     phone="919800000002",
                     whatsapp_phone="919800000002",
@@ -364,10 +364,10 @@ def seed_if_empty(db: Session) -> None:
                 ),
                 Member(
                     household_id=household.id,
-                    name="Ramesh (Cook)",
+                    name="Bhaiya (Cook)",
                     role="cook",
-                    phone="919800000003",
-                    whatsapp_phone="919800000003",
+                    phone="+919229247588",
+                    whatsapp_phone="+919229247588",
                     notify=False,
                     is_cook=True,
                 ),
