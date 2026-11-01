@@ -8,6 +8,13 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "frontend") not in sys.path:
     sys.path.insert(0, str(_ROOT / "frontend"))
 
+# Auto-revive backend if a user loads a subpage directly
+try:
+    from app import ensure_backend
+    ensure_backend()
+except Exception:
+    pass
+
 from api import ApiError, get, post
 
 

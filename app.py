@@ -87,7 +87,6 @@ def _sync_secrets_to_env() -> dict[str, str]:
     for k, v in secrets.items():
         os.environ[k] = v
 
-    # Write / update .env file so running backend can reload it
     env_path = ROOT / ".env"
     existing: dict[str, str] = {}
     if env_path.is_file():
@@ -154,11 +153,16 @@ def _ensure_backend_running() -> None:
     ]
     subprocess.Popen(cmd, cwd=str(ROOT), env=env)
 
-    # Wait up to 5 seconds for backend to become ready
-    for _ in range(25):
+    # Wait up to 8 seconds for backend to become ready
+    for _ in range(40):
         if _is_port_open("127.0.0.1", 8000):
             break
         time.sleep(0.2)
+
+
+def ensure_backend() -> None:
+    """Public helper that can be called from any page to ensure backend is alive."""
+    _ensure_backend_running()
 
 
 _ensure_backend_running()
