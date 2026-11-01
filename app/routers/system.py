@@ -210,14 +210,15 @@ async def inbound_whatsapp(request: Request, db: Session = Depends(get_db)):
         if clean_sender and body_text:
             reply = _handle_flatmate_inbound(db, clean_sender, body_text)
             if reply:
-                safe_reply = (
-                    reply.replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
+                safe_reply = reply.replace("]]>", "]] >")
+                twiml = (
+                    '<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<Response>\n'
+                    f'    <Message><Body><![CDATA[{safe_reply}]]></Body></Message>\n'
+                    '</Response>'
                 )
-                twiml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{safe_reply}</Message></Response>'
-                return Response(content=twiml, media_type="application/xml")
-        return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response/>', media_type="application/xml")
+                return Response(content=twiml, media_type="text/xml; charset=utf-8")
+        return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response/>', media_type="text/xml; charset=utf-8")
 
     # 2. Meta Inbound Webhook (JSON)
     try:
