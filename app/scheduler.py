@@ -4,7 +4,9 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.config import get_settings
 from app.database import SessionLocal
+from app.models import Member
 from app.services.jobs import job_chef_calls, job_generate_weekly_menu, job_grocery_reminders
+from app.services.whatsapp import send_text
 from app.services.flat_chat import (
     get_or_create_evening_session,
     format_kickoff_message,
@@ -29,7 +31,18 @@ def job_flat_evening_kickoff(db) -> str:
     tomorrow = today() + timedelta(days=1)
     session = get_or_create_evening_session(db, tomorrow)
     msg = format_kickoff_message(session)
-    return f"Kickoff sent for {session.target_date} ({session.meal_slot})"
+
+    # Broadcast to all flatmates opted into notifications
+    members = db.query(Member).filter(Member.is_cook == False, Member.notify == True).all()
+    sent_count = 0
+    for m in members:
+        p = m.whatsapp_phone or m.phone
+        if p.strip():
+            res = send_text(p.strip(), msg)
+            if res.sent:
+                sent_count += 1
+
+    return f"Kickoff sent to {sent_count} flatmates for {session.target_date} ({session.meal_slot})"
 
 
 def job_flat_hourly_nudge(db) -> str:
@@ -55,7 +68,17 @@ def job_flat_hourly_nudge(db) -> str:
     db.commit()
 
     nudge_msg = format_hourly_reminder(session)
-    return f"Nudge #{session.nudge_count} sent for {session.selected_recipe_name or 'meal choice'}"
+    sent_count = 0
+    if nudge_msg:
+        members = db.query(Member).filter(Member.is_cook == False, Member.notify == True).all()
+        for m in members:
+            p = m.whatsapp_phone or m.phone
+            if p.strip():
+                res = send_text(p.strip(), nudge_msg)
+                if res.sent:
+                    sent_count += 1
+
+    return f"Nudge #{session.nudge_count} sent to {sent_count} flatmates for {session.selected_recipe_name or 'meal choice'}"
 
 
 def get_scheduler() -> BackgroundScheduler | None:

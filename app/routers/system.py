@@ -7,10 +7,12 @@ from app.config import ROOT_DIR, get_settings
 from app.database import get_db
 from app.scheduler import get_scheduler
 from app.schemas import AutomationStatus, IntegrationStatus
+from app.models import Member
 from app.services.ai_chat import ai_status
+from app.services.flat_chat import process_incoming_group_message
 from app.services.jobs import job_chef_calls, job_generate_weekly_menu, job_grocery_reminders, recent_job_runs
 from app.services.voice import voice_status
-from app.services.whatsapp import whatsapp_status
+from app.services.whatsapp import send_text, whatsapp_status
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -159,7 +161,57 @@ def verify_whatsapp(
     raise HTTPException(403, "Verification token mismatch")
 
 
+def _handle_flatmate_inbound(db: Session, sender_phone: str, text: str) -> None:
+    """Process incoming WhatsApp message from a flatmate and broadcast the update."""
+    clean_sender = sender_phone.replace("+", "").strip()
+    last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
+
+    # Find which flatmate sent this
+    members = db.query(Member).filter(Member.is_cook == False).all()
+    sender_member = None
+    for m in members:
+        p = (m.whatsapp_phone or m.phone or "").replace("+", "").strip()
+        if p.endswith(last_10):
+            sender_member = m
+            break
+
+    sender_name = sender_member.name if sender_member else "Flatmate"
+
+    # Process message through the meal decision state machine
+    reply = process_incoming_group_message(db, text, sender_name)
+    if reply:
+        send_text(sender_phone, reply)
+
+    # If the message made a decisive change (like locking or choosing a dish), notify other flatmates
+    text_lower = text.lower()
+    if any(w in text_lower for w in ["yes", "lock", "ordered", "option", "change to", "done"]):
+        broadcast_text = f"📢 *Kitchen Bot Update:*\n{sender_name}: \"{text}\"\n\n🤖 {reply}"
+        for m in members:
+            p = (m.whatsapp_phone or m.phone or "").replace("+", "").strip()
+            if p and not p.endswith(last_10) and m.notify:
+                send_text(p, broadcast_text)
+
+
 @router.post("/webhooks/whatsapp")
-async def inbound_whatsapp(request: Request):
-    body = await request.json()
-    return {"ok": True, "received": True, "keys": list(body.keys())}
+async def inbound_whatsapp(request: Request, db: Session = Depends(get_db)):
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False, "error": "Invalid JSON"}
+
+    try:
+        entries = body.get("entry", [])
+        for entry in entries:
+            for change in entry.get("changes", []):
+                val = change.get("value", {})
+                messages = val.get("messages", [])
+                for msg in messages:
+                    sender_phone = msg.get("from", "").strip()
+                    if msg.get("type") == "text":
+                        text = msg.get("text", {}).get("body", "").strip()
+                        if sender_phone and text:
+                            _handle_flatmate_inbound(db, sender_phone, text)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+    return {"ok": True, "received": True}
