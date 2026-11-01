@@ -195,6 +195,9 @@ def _handle_flatmate_inbound(db: Session, sender_phone: str, text: str) -> str:
 
 
 @router.post("/webhooks/whatsapp")
+@router.post("/webhooks/whatsapp/")
+@router.post("/webh")
+@router.post("/webh/")
 async def inbound_whatsapp(request: Request, db: Session = Depends(get_db)):
     content_type = request.headers.get("content-type", "")
 

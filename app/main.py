@@ -43,6 +43,13 @@ app.include_router(chef.router)
 app.include_router(system.router)
 app.include_router(flat_chat.router)
 
+# Direct root-level aliases for webhooks (in case user pasted without /api)
+app.add_api_route("/webhooks/whatsapp", system.inbound_whatsapp, methods=["POST"])
+app.add_api_route("/webhooks/whatsapp/", system.inbound_whatsapp, methods=["POST"])
+app.add_api_route("/webh", system.inbound_whatsapp, methods=["POST"])
+app.add_api_route("/webh/", system.inbound_whatsapp, methods=["POST"])
+
+
 
 @app.get("/api/health")
 def health():
