@@ -63,7 +63,6 @@ def require_auth() -> str | None:
                         else:
                             st.error("Incorrect passcode. Ask your flatmates!")
                     except Exception:
-                        # Fallback check against configured passcode
                         if entered.strip() == "chakna302x":
                             st.session_state["authenticated"] = True
                             st.rerun()
@@ -71,7 +70,6 @@ def require_auth() -> str | None:
                             st.error("Incorrect passcode.")
         st.stop()
 
-    # User is authenticated: render flatmate profile picker & navigation in sidebar
     with st.sidebar:
         members = []
         try:
@@ -104,6 +102,7 @@ def require_auth() -> str | None:
             st.page_link("pages/2_Grocery.py", label="Grocery List", icon="🛒")
             st.page_link("pages/3_Household.py", label="Household & Cook", icon="👨‍👩‍👧")
             st.page_link("pages/4_Chef_Calls.py", label="Cook Voice Calls", icon="📞")
+            st.page_link("pages/7_Flat_WhatsApp.py", label="Flat WhatsApp Bot", icon="💬")
             st.page_link("pages/5_Automation.py", label="Automation", icon="⏰")
             st.page_link("pages/6_Settings.py", label="Settings & Keys", icon="⚙️")
         except Exception:

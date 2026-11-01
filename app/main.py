@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine, ensure_schema
-from app.routers import chef, chat, grocery, household, menus, system
+from app.routers import chef, chat, grocery, household, menus, system, flat_chat
 from app.scheduler import start_scheduler, stop_scheduler
 from app.seed import seed_if_empty
 
@@ -41,6 +41,7 @@ app.include_router(grocery.router)
 app.include_router(household.router)
 app.include_router(chef.router)
 app.include_router(system.router)
+app.include_router(flat_chat.router)
 
 
 @app.get("/api/health")

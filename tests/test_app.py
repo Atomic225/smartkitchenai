@@ -183,3 +183,29 @@ def test_cook_calling_schedule_and_hindi_script(client):
     assert "Namaste" in preview["scripts"]["weekend_lunch"]
     assert "Namaste" in preview["scripts"]["weekend_dinner"]
     assert "Dhanyawad" in preview["scripts"]["weekday"]
+
+
+def test_flat_decision_state_machine(client):
+    # Test getting active session for tomorrow
+    session_res = client.get("/api/flat-chat/session/today")
+    assert session_res.status_code == 200
+    session_data = session_res.json()
+    assert "kickoff_text" in session_data
+    assert "Hey Flatmates" in session_data["kickoff_text"]
+
+    # Flatmate picks Option 2
+    msg1 = client.post("/api/flat-chat/message", json={"text": "Option 2", "sender": "Shubham"}).json()
+    assert "Selected" in msg1["reply"]
+
+    # Another flatmate changes their mind to Option 1
+    msg2 = client.post("/api/flat-chat/message", json={"text": "Option 1", "sender": "Amit"}).json()
+    assert "Menu Updated" in msg2["reply"]
+
+    # Flatmate says ordered
+    msg3 = client.post("/api/flat-chat/message", json={"text": "Ordered from Blinkit", "sender": "Shubham"}).json()
+    assert "Can you confirm" in msg3["reply"]
+
+    # Flatmate confirms Yes lock it
+    msg4 = client.post("/api/flat-chat/message", json={"text": "Yes, lock it", "sender": "Shubham"}).json()
+    assert "Locked & Confirmed" in msg4["reply"]
+    assert "cook" in msg4["reply"].lower()
