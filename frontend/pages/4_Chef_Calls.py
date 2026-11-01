@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT / 'frontend') not in sys.path:
+    sys.path.insert(0, str(_ROOT / 'frontend'))
+
 import streamlit as st
 
 from api import ApiError, get, post, put
