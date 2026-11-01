@@ -12,6 +12,10 @@ os.environ["GEMINI_API_KEY"] = ""
 os.environ["GEMINI_MODEL"] = "gemini-3.5-flash-lite"
 # OpenAI (legacy)
 os.environ["OPENAI_API_KEY"] = ""
+# Twilio
+os.environ["TWILIO_ACCOUNT_SID"] = ""
+os.environ["TWILIO_AUTH_TOKEN"] = ""
+os.environ["TWILIO_PHONE_NUMBER"] = ""
 # Other integrations
 os.environ["WHATSAPP_ACCESS_TOKEN"] = ""
 os.environ["WHATSAPP_PHONE_NUMBER_ID"] = ""
