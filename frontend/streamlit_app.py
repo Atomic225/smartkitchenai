@@ -247,3 +247,30 @@ with st.expander(f"👥 Manage Flatmates ({len(flatmates)} / 6 People)"):
                         st.error(str(exc))
     else:
         st.info("Maximum 6 flatmates reached. Remove a flatmate above to add another.")
+
+st.markdown("---")
+
+# ----------------- SECTION 5: AI CHEF ASSISTANT (SMART & ENGAGING) -----------------
+st.subheader("🤖 Ask AI Kitchen Chef")
+st.caption("Ask Chef Gemini for dinner ideas, recipe tips, or what to cook with whatever is in your fridge.")
+
+if "chat_history" not in st.session_state:
+    try:
+        st.session_state["chat_history"] = get("/api/chat/history")
+    except ApiError:
+        st.session_state["chat_history"] = []
+
+# Display last 4 chat messages in a clean style
+for msg in st.session_state["chat_history"][-4:]:
+    with st.chat_message("user" if msg["role"] == "user" else "assistant"):
+        st.write(msg["content"])
+
+user_q = st.chat_input("Ask Chef (e.g. 'What can we make with paneer and onions?', 'Give me 3 light dinner ideas')...")
+if user_q:
+    st.session_state["chat_history"].append({"role": "user", "content": user_q})
+    try:
+        res = post("/api/chat", json={"message": user_q})
+        st.session_state["chat_history"].append({"role": "assistant", "content": res.get("reply", "")})
+        st.rerun()
+    except ApiError as exc:
+        st.error(str(exc))
