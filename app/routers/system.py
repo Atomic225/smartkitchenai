@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.config import ROOT_DIR, get_settings
@@ -161,7 +161,7 @@ def verify_whatsapp(
     raise HTTPException(403, "Verification token mismatch")
 
 
-def _handle_flatmate_inbound(db: Session, sender_phone: str, text: str) -> None:
+def _handle_flatmate_inbound(db: Session, sender_phone: str, text: str) -> str:
     """Process incoming WhatsApp message from a flatmate and broadcast the update."""
     clean_sender = sender_phone.replace("+", "").strip()
     last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
@@ -179,7 +179,7 @@ def _handle_flatmate_inbound(db: Session, sender_phone: str, text: str) -> None:
 
     # Process message through the meal decision state machine
     reply = process_incoming_group_message(db, text, sender_name)
-    if reply:
+    if reply and not get_settings().twilio_configured():
         send_text(sender_phone, reply)
 
     # If the message made a decisive change (like locking or choosing a dish), notify other flatmates
@@ -191,9 +191,32 @@ def _handle_flatmate_inbound(db: Session, sender_phone: str, text: str) -> None:
             if p and not p.endswith(last_10) and m.notify:
                 send_text(p, broadcast_text)
 
+    return reply
+
 
 @router.post("/webhooks/whatsapp")
 async def inbound_whatsapp(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+
+    # 1. Twilio Inbound Webhook (form-urlencoded)
+    if "form" in content_type:
+        form = await request.form()
+        sender = form.get("From", "")
+        body_text = form.get("Body", "")
+        clean_sender = sender.replace("whatsapp:", "").strip()
+        if clean_sender and body_text:
+            reply = _handle_flatmate_inbound(db, clean_sender, body_text)
+            if reply:
+                safe_reply = (
+                    reply.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                )
+                twiml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{safe_reply}</Message></Response>'
+                return Response(content=twiml, media_type="application/xml")
+        return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response/>', media_type="application/xml")
+
+    # 2. Meta Inbound Webhook (JSON)
     try:
         body = await request.json()
     except Exception:
