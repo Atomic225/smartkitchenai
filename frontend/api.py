@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -14,14 +15,49 @@ class ApiError(RuntimeError):
         self.status_code = status_code
 
 
+def _auto_start_local_backend() -> bool:
+    try:
+        from app.launcher import ensure_backend_running
+        return ensure_backend_running(max_wait_seconds=25.0)
+    except Exception:
+        return False
+
+
 def request(method: str, path: str, **kwargs) -> Any:
     url = f"{API_URL}{path}"
     try:
         response = httpx.request(method, url, timeout=60, **kwargs)
     except httpx.HTTPError as exc:
+        # If localhost and refused, try auto-starting the backend and retry once
+        if "127.0.0.1" in API_URL or "localhost" in API_URL:
+            if _auto_start_local_backend():
+                try:
+                    response = httpx.request(method, url, timeout=60, **kwargs)
+                except httpx.HTTPError as retry_exc:
+                    exc = retry_exc
+                else:
+                    return _handle_response(response)
+
+        # Read last lines of uvicorn.log if available to provide useful diagnostics
+        log_snippet = ""
+        log_file = Path(__file__).resolve().parent.parent / "data" / "uvicorn.log"
+        if log_file.is_file():
+            try:
+                lines = log_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+                if lines:
+                    last_few = "\n".join(lines[-10:])
+                    log_snippet = f"\nRecent backend log:\n{last_few}"
+            except Exception:
+                pass
+
         raise ApiError(
-            f"Cannot reach the Smart Kitchen API at {API_URL}. Start it with python run.py. ({exc})"
+            f"Cannot reach the Smart Kitchen API at {API_URL}. Start it with python run.py. ({exc}){log_snippet}"
         ) from exc
+
+    return _handle_response(response)
+
+
+def _handle_response(response: httpx.Response) -> Any:
     if response.status_code >= 400:
         detail = response.text
         try:

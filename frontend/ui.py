@@ -10,8 +10,8 @@ if str(_ROOT / "frontend") not in sys.path:
 
 # Auto-revive backend if a user loads a subpage directly
 try:
-    from app import ensure_backend
-    ensure_backend()
+    from app.launcher import ensure_backend_running
+    ensure_backend_running()
 except Exception:
     pass
 
