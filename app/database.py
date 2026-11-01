@@ -1,10 +1,11 @@
 from collections.abc import Generator
+from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.config import DATA_DIR, get_settings
+from app.config import DATA_DIR, ROOT_DIR, get_settings
 
 
 class Base(DeclarativeBase):
@@ -14,8 +15,13 @@ class Base(DeclarativeBase):
 def _engine_url() -> str:
     settings = get_settings()
     url = settings.database_url
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     if url.startswith("sqlite:///./"):
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        # Resolve relative sqlite path to absolute path anchored at ROOT_DIR
+        relative_path = url.replace("sqlite:///./", "")
+        abs_db_path = (ROOT_DIR / relative_path).resolve()
+        abs_db_path.parent.mkdir(parents=True, exist_ok=True)
+        return f"sqlite:///{abs_db_path.as_posix()}"
     return url
 
 
@@ -40,8 +46,9 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 
 
 def ensure_schema(bind_engine=None) -> None:
-    """Safely apply column additions to existing SQLite tables without migrations."""
+    """Safely apply column additions and new tables to existing SQLite tables without migrations."""
     target_engine = bind_engine or engine
+    Base.metadata.create_all(bind=target_engine)
     try:
         with target_engine.connect() as conn:
             tables = [r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table';").fetchall()]
