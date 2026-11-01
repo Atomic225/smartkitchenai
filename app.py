@@ -57,12 +57,25 @@ def _get_secrets_dict() -> dict[str, str]:
                     res[str(k)] = _clean_val(v)
         except Exception:
             try:
-                for line in p.read_text(encoding="utf-8").splitlines():
+                raw_lines = p.read_text(encoding="utf-8").splitlines()
+                pending_key = None
+                for line in raw_lines:
                     line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
                         k, v = line.split("=", 1)
-                        if k.strip() not in res:
-                            res[k.strip()] = _clean_val(v)
+                        k = k.strip()
+                        v = v.strip()
+                        if v:
+                            if k not in res:
+                                res[k] = _clean_val(v)
+                            pending_key = None
+                        else:
+                            pending_key = k
+                    elif pending_key:
+                        res[pending_key] = _clean_val(line)
+                        pending_key = None
             except Exception:
                 pass
     return res
