@@ -155,3 +155,31 @@ def test_flat_passcode_auth(client):
     # Correct passcode
     good = client.post("/api/auth/verify", json={"passcode": "chakna302x"}).json()
     assert good["ok"] is True
+
+
+def test_cook_calling_schedule_and_hindi_script(client):
+    # Verify customizable timings in household
+    put_res = client.put(
+        "/api/household",
+        json={
+            "chef_call_weekday_time": "08:15",
+            "chef_call_weekend_lunch_time": "10:00",
+            "chef_call_weekend_dinner_time": "17:30",
+        },
+    )
+    assert put_res.status_code == 200
+    data = put_res.json()
+    assert data["chef_call_weekday_time"] == "08:15"
+    assert data["chef_call_weekend_lunch_time"] == "10:00"
+    assert data["chef_call_weekend_dinner_time"] == "17:30"
+
+    # Verify preview scripts endpoint
+    preview = client.get("/api/chef-calls/preview").json()
+    assert "scripts" in preview
+    assert "weekday" in preview["scripts"]
+    assert "weekend_lunch" in preview["scripts"]
+    assert "weekend_dinner" in preview["scripts"]
+    assert "Namaste" in preview["scripts"]["weekday"]
+    assert "Namaste" in preview["scripts"]["weekend_lunch"]
+    assert "Namaste" in preview["scripts"]["weekend_dinner"]
+    assert "Dhanyawad" in preview["scripts"]["weekday"]

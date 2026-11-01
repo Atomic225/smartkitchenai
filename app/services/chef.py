@@ -1,77 +1,145 @@
+from __future__ import annotations
+
 from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.models import ChefCall
-from app.services.exotel import place_call
 from app.services.household import get_cook, get_household
 from app.services.menu import dish_name, meals_for_date
 from app.services.timeutil import combine_local, now_local, today
-
+from app.services.voice import place_call
 
 SLOT_HI = {
-    "breakfast": "nashta",
-    "brunch": "brunch",
-    "lunch": "lunch",
-    "evening_snack": "shaam ka nasta",
-    "dinner": "dinner",
+    "breakfast": "Nashte mein",
+    "brunch": "Brunch mein",
+    "lunch": "Dopahar ke lunch mein",
+    "evening_snack": "Shaam ke nashte mein",
+    "dinner": "Raat ke dinner mein",
 }
 
 
-def build_script(db: Session, day: date) -> str:
+def build_script(db: Session, day: date, call_type: str = "daily") -> str:
+    """Generate a polite, clear, natural Hindi voice script for the cook."""
     household = get_household(db)
-    meals = meals_for_date(db, day)
+    all_meals = meals_for_date(db, day)
     cook = get_cook(db)
-    cook_name = cook.name if cook else "Chef"
-    if household.chef_language == "hindi":
-        greeting = f"Namaste {cook_name}. Aaj {day.strftime('%A')} ki menu yeh hai."
-    else:
-        greeting = f"Namaste {cook_name}. Aaj {day.strftime('%A')} ka menu yeh raha."
-    if not meals:
-        return greeting + " Menu abhi set nahi hua. Kripya ghar walon se confirm karein. Menu samajh aa gaya kya?"
+    cook_name = (cook.name.strip() + " ") if (cook and cook.name.strip()) else ""
+
+    # Filter meals based on call type
+    if call_type == "weekend_lunch":
+        target_meals = [m for m in all_meals if m.meal_slot in {"breakfast", "brunch", "lunch"}]
+        greeting = f"Namaste {cook_name}bhaiya! Aaj weekend hai. Dopahar ke lunch ke liye menu yeh hai:"
+        closing = f"Khana lagbhag {household.size} logon ke liye banana hai. Shaam ko dinner ke menu ke liye dobara call aayegi. Dhanyawad!"
+    elif call_type == "weekend_dinner":
+        target_meals = [m for m in all_meals if m.meal_slot in {"evening_snack", "dinner"}]
+        greeting = f"Namaste {cook_name}bhaiya! Aaj raat ke dinner ka menu yeh hai:"
+        closing = f"Khana lagbhag {household.size} logon ke liye tayar karna hai. Kripya samay par shuru kar dijiye. Dhanyawad!"
+    else:  # weekday / daily
+        target_meals = all_meals
+        day_name = day.strftime("%A")
+        day_hi = {
+            "Monday": "Somvar",
+            "Tuesday": "Mangalvar",
+            "Wednesday": "Budhvar",
+            "Thursday": "Guruvar",
+            "Friday": "Shukravar",
+            "Saturday": "Shanivar",
+            "Sunday": "Ravivar",
+        }.get(day_name, day_name)
+        greeting = f"Namaste {cook_name}bhaiya! Aaj {day_hi} ka kitchen menu yeh hai:"
+        closing = f"Khana lagbhag {household.size} logon ke liye banana hai. Kripya samay par shuru kar dijiye. Dhanyawad!"
+
+    if not target_meals:
+        return f"Namaste {cook_name}bhaiya! Aaj ka menu abhi set nahi hua hai. Kripya ghar walon se confirm kar lijiye. Dhanyawad!"
+
     lines = [greeting]
-    for item in meals:
-        slot = SLOT_HI.get(item.meal_slot, item.meal_slot)
-        recipe_line = ""
-        if item.recipe and item.recipe.hindi_script:
-            recipe_line = " " + item.recipe.hindi_script
-        lines.append(f"{slot.title()}: {dish_name(item)}.{recipe_line}")
+    for item in target_meals:
+        slot_label = SLOT_HI.get(item.meal_slot, item.meal_slot.capitalize())
+        name = dish_name(item)
+        if item.recipe and item.recipe.name_hi:
+            name = item.recipe.name_hi
+        line = f"{slot_label}: {name}."
         if item.notes:
-            lines.append(f"Note: {item.notes}")
-    lines.append(f"Servings lagbhag {household.size} logon ke liye hain.")
-    lines.append("Kripya confirm kijiye: menu samajh aa gaya? Haan ya nahi boliye.")
+            line += f" Note: {item.notes}."
+        lines.append(line)
+
+    lines.append(closing)
     return " ".join(lines)
 
 
-def schedule_call_for_date(db: Session, day: date) -> ChefCall | None:
+def schedule_calls_for_date(db: Session, day: date) -> list[ChefCall]:
+    """Schedule the cook calls for a specific date:
+    - Monday to Friday: 1 call (at chef_call_weekday_time).
+    - Saturday & Sunday: 2 calls (Call 1 at weekend_lunch_time, Call 2 at weekend_dinner_time).
+    """
     household = get_household(db)
     if not household.chef_call_enabled:
-        return None
+        return []
     cook = get_cook(db)
     if cook is None:
-        return None
-    existing = db.query(ChefCall).filter(ChefCall.menu_date == day).order_by(ChefCall.id.desc()).first()
-    if existing and existing.status in {"scheduled", "initiated", "completed", "confirmed"}:
-        return existing
-    call = ChefCall(
-        menu_date=day,
-        cook_name=cook.name,
-        cook_phone=cook.phone,
-        script=build_script(db, day),
-        scheduled_for=combine_local(day, household.chef_call_time).replace(tzinfo=None),
-        status="scheduled",
-        max_attempts=3,
-    )
-    db.add(call)
+        return []
+
+    is_weekend = day.weekday() >= 5  # 5=Saturday, 6=Sunday
+    planned_slots: list[tuple[str, str]] = []
+
+    if not is_weekend:
+        # Monday to Friday: 1 call
+        weekday_time = household.chef_call_weekday_time or household.chef_call_time or "08:30"
+        planned_slots.append(("weekday", weekday_time))
+    else:
+        # Saturday and Sunday: 2 calls
+        lunch_time = household.chef_call_weekend_lunch_time or "09:30"
+        dinner_time = household.chef_call_weekend_dinner_time or "17:00"
+        planned_slots.append(("weekend_lunch", lunch_time))
+        planned_slots.append(("weekend_dinner", dinner_time))
+
+    created_or_existing: list[ChefCall] = []
+    for call_type, time_str in planned_slots:
+        # Check if already scheduled or completed
+        existing = (
+            db.query(ChefCall)
+            .filter(ChefCall.menu_date == day, ChefCall.call_type == call_type)
+            .order_by(ChefCall.id.desc())
+            .first()
+        )
+        if existing and existing.status in {"scheduled", "initiated", "completed", "confirmed"}:
+            created_or_existing.append(existing)
+            continue
+
+        script = build_script(db, day, call_type)
+        scheduled_dt = combine_local(day, time_str).replace(tzinfo=None)
+
+        call = ChefCall(
+            menu_date=day,
+            call_type=call_type,
+            cook_name=cook.name,
+            cook_phone=cook.phone,
+            script=script,
+            scheduled_for=scheduled_dt,
+            status="scheduled",
+            max_attempts=3,
+        )
+        db.add(call)
+        created_or_existing.append(call)
+
     db.commit()
-    db.refresh(call)
-    return call
+    for call in created_or_existing:
+        db.refresh(call)
+
+    return created_or_existing
+
+
+def schedule_call_for_date(db: Session, day: date) -> ChefCall | None:
+    """Backward-compatible helper returning the primary scheduled call for the date."""
+    calls = schedule_calls_for_date(db, day)
+    return calls[0] if calls else None
 
 
 def execute_call(db: Session, call: ChefCall) -> ChefCall:
     call.attempts += 1
-    call.script = build_script(db, call.menu_date)
-    result = place_call(call.cook_phone)
+    call.script = build_script(db, call.menu_date, getattr(call, "call_type", "daily"))
+    result = place_call(call.cook_phone, call.script)
     call.updated_at = now_local().replace(tzinfo=None)
     if result.placed:
         call.status = "initiated"
@@ -92,7 +160,7 @@ def run_due_calls(db: Session) -> list[ChefCall]:
     if not household.chef_call_enabled:
         return []
     day = today()
-    schedule_call_for_date(db, day)
+    schedule_calls_for_date(db, day)
     due = (
         db.query(ChefCall)
         .filter(ChefCall.menu_date == day, ChefCall.status.in_(["scheduled", "retry_scheduled", "no-answer", "failed"]))
@@ -144,5 +212,5 @@ def mark_from_webhook(db: Session, provider_id: str, status: str, response_text:
     return call
 
 
-def list_calls(db: Session, limit: int = 30) -> list[ChefCall]:
+def list_calls(db: Session, limit: int = 50) -> list[ChefCall]:
     return db.query(ChefCall).order_by(ChefCall.id.desc()).limit(limit).all()

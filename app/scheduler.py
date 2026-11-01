@@ -40,9 +40,10 @@ def start_scheduler() -> BackgroundScheduler:
         id="grocery_reminders_hourly",
         replace_existing=True,
     )
+    # Check chef calls every minute so user-configured exact times fire promptly
     scheduler.add_job(
         lambda: _run(job_chef_calls),
-        CronTrigger(minute="*/10", timezone=timezone),
+        CronTrigger(minute="*", timezone=timezone),
         id="chef_calls",
         replace_existing=True,
     )

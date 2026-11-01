@@ -30,6 +30,9 @@ class HouseholdOut(BaseModel):
     auto_weekly_menu: bool
     grocery_reminder_days: int
     chef_call_time: str
+    chef_call_weekday_time: str = "08:30"
+    chef_call_weekend_lunch_time: str = "09:30"
+    chef_call_weekend_dinner_time: str = "17:00"
     chef_call_enabled: bool
     chef_language: str
 
@@ -44,6 +47,9 @@ class HouseholdUpdate(BaseModel):
     auto_weekly_menu: bool | None = None
     grocery_reminder_days: int | None = None
     chef_call_time: str | None = None
+    chef_call_weekday_time: str | None = None
+    chef_call_weekend_lunch_time: str | None = None
+    chef_call_weekend_dinner_time: str | None = None
     chef_call_enabled: bool | None = None
     chef_language: str | None = None
 
@@ -150,6 +156,7 @@ class NotificationOut(BaseModel):
 class ChefCallOut(BaseModel):
     id: int
     menu_date: date
+    call_type: str = "daily"
     cook_name: str
     cook_phone: str
     script: str

@@ -39,6 +39,29 @@ if _url.startswith("sqlite"):
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 
+def ensure_schema(bind_engine=None) -> None:
+    """Safely apply column additions to existing SQLite tables without migrations."""
+    target_engine = bind_engine or engine
+    try:
+        with target_engine.connect() as conn:
+            tables = [r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table';").fetchall()]
+            if "households" in tables:
+                cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(households);").fetchall()}
+                if "chef_call_weekday_time" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE households ADD COLUMN chef_call_weekday_time VARCHAR(8) DEFAULT '08:30'")
+                if "chef_call_weekend_lunch_time" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE households ADD COLUMN chef_call_weekend_lunch_time VARCHAR(8) DEFAULT '09:30'")
+                if "chef_call_weekend_dinner_time" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE households ADD COLUMN chef_call_weekend_dinner_time VARCHAR(8) DEFAULT '17:00'")
+            if "chef_calls" in tables:
+                cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(chef_calls);").fetchall()}
+                if "call_type" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE chef_calls ADD COLUMN call_type VARCHAR(40) DEFAULT 'daily'")
+            conn.commit()
+    except Exception:
+        pass
+
+
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:

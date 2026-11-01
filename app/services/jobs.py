@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import JobRun
-from app.services.chef import run_due_calls, schedule_call_for_date
+from app.services.chef import run_due_calls, schedule_calls_for_date
 from app.services.grocery import build_shopping_list
 from app.services.household import get_household
 from app.services.menu import generate_weekly_menu, get_week
@@ -89,12 +89,12 @@ def job_grocery_reminders(db: Session) -> str:
 
 def job_chef_calls(db: Session) -> str:
     tomorrow = today() + timedelta(days=1)
-    schedule_call_for_date(db, today())
-    schedule_call_for_date(db, tomorrow)
+    schedule_calls_for_date(db, today())
+    schedule_calls_for_date(db, tomorrow)
     processed = run_due_calls(db)
     if not processed:
         return "no due chef calls"
-    return ", ".join(f"{row.menu_date}:{row.status}" for row in processed)
+    return ", ".join(f"{row.menu_date}:{getattr(row, 'call_type', 'call')}:{row.status}" for row in processed)
 
 
 def recent_job_runs(db: Session, limit: int = 20) -> list[dict]:

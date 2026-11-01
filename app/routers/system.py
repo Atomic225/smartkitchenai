@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -7,9 +7,9 @@ from app.config import ROOT_DIR, get_settings
 from app.database import get_db
 from app.scheduler import get_scheduler
 from app.schemas import AutomationStatus, IntegrationStatus
-from app.services.ai_chat import ai_status  # previously openai_status
-from app.services.exotel import exotel_status
+from app.services.ai_chat import ai_status
 from app.services.jobs import job_chef_calls, job_generate_weekly_menu, job_grocery_reminders, recent_job_runs
+from app.services.voice import voice_status
 from app.services.whatsapp import whatsapp_status
 
 router = APIRouter(prefix="/api", tags=["system"])
@@ -19,7 +19,7 @@ def _integrations() -> list[IntegrationStatus]:
     return [
         IntegrationStatus(**ai_status()),
         IntegrationStatus(**whatsapp_status()),
-        IntegrationStatus(**exotel_status()),
+        IntegrationStatus(**voice_status()),
     ]
 
 
@@ -65,7 +65,6 @@ def run_job(job_name: str, db: Session = Depends(get_db)):
     return {"job": job_name, "result": fn()}
 
 
-
 @router.post("/auth/verify")
 def verify_passcode(payload: dict):
     settings = get_settings()
@@ -74,6 +73,7 @@ def verify_passcode(payload: dict):
         return {"ok": True, "required": False}
     entered = str(payload.get("passcode", "")).strip()
     return {"ok": entered == expected, "required": True}
+
 
 @router.get("/settings/env")
 def env_status():
@@ -90,8 +90,11 @@ def env_status():
         "openai_api_key_set": settings.openai_configured(),
         # Other integrations
         "whatsapp_set": settings.whatsapp_configured(),
+        "voice_set": settings.voice_configured(),
+        "twilio_set": settings.twilio_configured(),
         "exotel_set": settings.exotel_configured(),
         "whatsapp_phone_number_id": settings.whatsapp_phone_number_id,
+        "twilio_phone_number": settings.twilio_phone_number,
         "exotel_sid": settings.exotel_sid,
         "exotel_caller_id": settings.exotel_caller_id,
         "exotel_app_id_set": bool(settings.exotel_app_id.strip()),
@@ -101,8 +104,9 @@ def env_status():
 @router.post("/settings/env")
 def write_env(payload: dict):
     allowed = {
-        # Gemini
+        # Flat auth
         "FLAT_PASSCODE",
+        # Gemini
         "GEMINI_API_KEY",
         "GEMINI_MODEL",
         # OpenAI (legacy)
@@ -113,6 +117,10 @@ def write_env(payload: dict):
         "WHATSAPP_PHONE_NUMBER_ID",
         "WHATSAPP_BUSINESS_ACCOUNT_ID",
         "WHATSAPP_VERIFY_TOKEN",
+        # Twilio Voice
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_AUTH_TOKEN",
+        "TWILIO_PHONE_NUMBER",
         # Exotel
         "EXOTEL_SID",
         "EXOTEL_API_KEY",

@@ -24,9 +24,12 @@ class Household(Base):
     )
     auto_weekly_menu: Mapped[bool] = mapped_column(Boolean, default=True)
     grocery_reminder_days: Mapped[int] = mapped_column(Integer, default=2)
-    chef_call_time: Mapped[str] = mapped_column(String(8), default="07:00")
+    chef_call_time: Mapped[str] = mapped_column(String(8), default="08:30")
+    chef_call_weekday_time: Mapped[str] = mapped_column(String(8), default="08:30")
+    chef_call_weekend_lunch_time: Mapped[str] = mapped_column(String(8), default="09:30")
+    chef_call_weekend_dinner_time: Mapped[str] = mapped_column(String(8), default="17:00")
     chef_call_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    chef_language: Mapped[str] = mapped_column(String(20), default="hinglish")
+    chef_language: Mapped[str] = mapped_column(String(20), default="hindi")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     members: Mapped[list["Member"]] = relationship(back_populates="household", cascade="all, delete-orphan")
@@ -144,6 +147,7 @@ class ChefCall(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     menu_date: Mapped[date] = mapped_column(Date, index=True)
+    call_type: Mapped[str] = mapped_column(String(40), default="daily")
     cook_name: Mapped[str] = mapped_column(String(120), default="")
     cook_phone: Mapped[str] = mapped_column(String(20), default="")
     script: Mapped[str] = mapped_column(Text, default="")

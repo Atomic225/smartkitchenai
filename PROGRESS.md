@@ -1,4 +1,4 @@
-﻿# Smart Kitchen AI — Development Progress
+# Smart Kitchen AI — Development Progress
 
 > Last updated: 2026-10-31 | Agent: Antigravity
 
@@ -204,3 +204,28 @@ Added regression tests for non-empty Gemini tool schemas and retrieving all meal
 
 
 8. **Flat Passcode Lock Screen & Roommate Profile Switcher** — Secured all dashboard pages behind a shared flat passcode (`chakna302x`). Visitors are greeted with a clean lock screen. Once unlocked, an active flatmate selector appears in the sidebar to toggle between roommates (`Shubh`, `Aman`, etc.) with a 1-click "Lock Kitchen" sign-out button. Passcode can be re-configured on the Settings page anytime.
+
+
+---
+
+## Cook Voice Calling in Natural Hindi (Twilio & Exotel)
+
+### Architecture & Capabilities:
+- **Calling Cadence:**
+  - **Monday to Friday (Weekdays):** 1 call / day (default `08:30` IST, changeable anytime). Covers full-day lunch and dinner briefing.
+  - **Saturday & Sunday (Weekends):** 2 calls / day (changeable anytime):
+    - **Call 1 (Lunch Briefing):** default `09:30` IST. Briefs lunch & afternoon meals.
+    - **Call 2 (Dinner Briefing):** default `17:00` IST. Briefs special weekend dinner meals.
+- **Natural Spoken Hindi Voice Engine:**
+  - Polite greetings: *"Namaste {cook_name} bhaiya! Aaj kitchen ka menu yeh hai..."*
+  - Dishes announced by their Hindi names (e.g. *Dal Tadka, Paneer Butter Masala, Poha*).
+  - Household servings count automatically announced (*"Khana lagbhag 4 logon ke liye banana hai"*).
+  - Closing: *"Kripya samay par shuru kar dijiye. Dhanyawad!"*
+- **Telephony Dispatcher (`app/services/voice.py`):**
+  - **Twilio Voice:** High-quality Indian Hindi voice (`hi-IN` with `Polly.Aditi`). Directly dials cook's mobile phone via Twilio REST API.
+  - **Exotel Voice:** Alternative Indian telephony provider.
+  - **Simulated / Offline Mode:** If no telephony keys are set, logs complete Hindi scripts honestly without crashing.
+- **UI & Controls (`frontend/pages/4_Chef_Calls.py`):**
+  - **Timings Form:** User can customize Mon–Fri time, Sat–Sun Lunch time, and Sat–Sun Dinner time directly from the web interface.
+  - **Script Preview:** Live preview of today's Hindi speech script.
+  - **Instant Test Call:** "Ring Phone Now" button to test the voice call immediately.

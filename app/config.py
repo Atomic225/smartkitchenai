@@ -37,7 +37,14 @@ class Settings(BaseSettings):
     whatsapp_business_account_id: str = ""
     whatsapp_verify_token: str = "smartkitchen-verify"
 
-    # ---------- Exotel ----------
+    # ---------- Twilio Voice (Primary Cook Calling) ----------
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""
+    twilio_voice: str = "Polly.Aditi"
+    twilio_language: str = "hi-IN"
+
+    # ---------- Exotel (Alternative Indian Telephony) ----------
     exotel_sid: str = ""
     exotel_api_key: str = ""
     exotel_api_token: str = ""
@@ -60,6 +67,13 @@ class Settings(BaseSettings):
     def whatsapp_configured(self) -> bool:
         return bool(self.whatsapp_access_token.strip() and self.whatsapp_phone_number_id.strip())
 
+    def twilio_configured(self) -> bool:
+        return bool(
+            self.twilio_account_sid.strip()
+            and self.twilio_auth_token.strip()
+            and self.twilio_phone_number.strip()
+        )
+
     def exotel_configured(self) -> bool:
         return bool(
             self.exotel_sid.strip()
@@ -67,6 +81,9 @@ class Settings(BaseSettings):
             and self.exotel_api_token.strip()
             and self.exotel_caller_id.strip()
         )
+
+    def voice_configured(self) -> bool:
+        return self.twilio_configured() or self.exotel_configured()
 
 
 @lru_cache
