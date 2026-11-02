@@ -1,74 +1,78 @@
 import urllib.parse
+import time
 from datetime import date, timedelta
 import streamlit as st
 from api import ApiError, get, post, put
 from ui import inject_theme, require_auth
 
-st.set_page_config(page_title="Kitchen OS: Your flat's kitchen, sorted", page_icon="🍳", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="KitchenAI: Your flat's kitchen, sorted", page_icon="🍳", layout="wide", initial_sidebar_state="collapsed")
 inject_theme()
 require_auth()
 
-# ----------------- KITCHEN OS BRANDING & STYLES -----------------
+# ----------------- KITCHENAI BRANDING & STYLES -----------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
     }
     
-    /* Top Kitchen OS Navbar */
-    .kos-header {
+    /* Top KitchenAI Navbar */
+    .kai-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 14px 24px;
+        padding: 16px 26px;
         background: #ffffff;
-        border-radius: 18px;
+        border-radius: 20px;
         border: 1px solid #e2e8f0;
-        margin-bottom: 24px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        margin-bottom: 20px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.03);
     }
-    .kos-brand {
+    .kai-brand {
         display: flex;
         align-items: center;
         gap: 12px;
-        font-weight: 800;
-        font-size: 1.35rem;
+        font-weight: 900;
+        font-size: 1.45rem;
         color: #0f172a;
+        letter-spacing: -0.5px;
     }
-    .kos-badge {
-        background: #fef3c7;
+    .kai-badge {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
         color: #92400e;
-        padding: 4px 10px;
+        padding: 5px 12px;
         border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 700;
+        font-size: 0.72rem;
+        font-weight: 800;
         letter-spacing: 0.5px;
+        border: 1px solid #fcd34d;
     }
     
     /* WhatsApp Phone Frame Mockup */
     .wa-card {
         background: #f7f5ef;
-        border-radius: 20px;
+        border-radius: 24px;
         border: 1px solid #e6e2d3;
         padding: 24px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        box-shadow: 0 12px 36px rgba(0,0,0,0.06);
     }
     .wa-header {
         background: #064e3b;
         color: #ffffff;
-        padding: 14px 18px;
-        border-radius: 14px;
+        padding: 14px 20px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         gap: 12px;
         margin-bottom: 16px;
     }
     .wa-header-title {
-        font-weight: 700;
-        font-size: 1rem;
+        font-weight: 800;
+        font-size: 1.05rem;
         margin: 0;
+        color: #ffffff;
     }
     .wa-header-sub {
         font-size: 0.75rem;
@@ -79,22 +83,22 @@ st.markdown("""
     /* Message Bubble */
     .wa-bubble {
         background: #ffffff;
-        border-radius: 16px;
+        border-radius: 18px;
         padding: 20px;
         border: 1px solid #e5e7eb;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         margin-bottom: 16px;
     }
     .bubble-tag {
         font-size: 0.75rem;
         color: #059669;
-        font-weight: 700;
+        font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 4px;
     }
     .bubble-title {
-        font-size: 1.25rem;
+        font-size: 1.3rem;
         font-weight: 800;
         color: #1e293b;
         margin-bottom: 14px;
@@ -103,27 +107,29 @@ st.markdown("""
     /* Instamart & Blinkit Card */
     .instamart-card {
         background: #ffffff;
-        border-radius: 18px;
-        border: 1px solid #fed7aa;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(251, 146, 60, 0.08);
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        padding: 22px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+        margin-top: 14px;
     }
     .instamart-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 12px;
         margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
     }
     .im-badge {
         background: #ffedd5;
         color: #c2410c;
         padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.8rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
         font-weight: 800;
     }
+    
     .price-row {
         display: flex;
         justify-content: space-between;
@@ -154,80 +160,118 @@ st.markdown("""
         margin-right: 6px;
         margin-bottom: 6px;
     }
+    
+    /* Presentation mode banner */
+    .pitch-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-bottom: 18px;
+    }
+    
+    .item-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .swiggy-btn {
+        background: #fff7ed;
+        color: #ea580c;
+        border: 1px solid #ffedd5;
+    }
+    .blinkit-btn {
+        background: #fefce8;
+        color: #ca8a04;
+        border: 1px solid #fef08a;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- 7-DAY DEFAULT KITCHEN OS PLAN (STRICTLY DINNER ONLY) -----------------
-KITCHENOS_WEEKLY_PLAN = {
+# ----------------- 7-DAY DEFAULT KITCHENAI PLAN (STRICTLY DINNER ONLY) -----------------
+KITCHENAI_WEEKLY_PLAN = {
     0: {
         "day": "Mon",
         "full_day": "Monday",
         "dinner": "Aloo Paratha (for 3) + Fresh Dahi",
+        "hero_search": "Potato",
         "groceries": [
-            {"name": "Potato (आलू)", "qty": "1 kg", "price": 38, "brand": "Fresh Harvest", "emoji": "🥔"},
-            {"name": "Fresh Curd (दही)", "qty": "400 g", "price": 40, "brand": "Amul Masti", "emoji": "🥛"},
-            {"name": "Green Chillies & Fresh Coriander", "qty": "1 bunch", "price": 20, "brand": "Farm Fresh", "emoji": "🌿"},
+            {"name": "Potato (आलू)", "qty": "1 kg", "price": 38, "brand": "Fresh Harvest", "emoji": "🥔", "search": "potato"},
+            {"name": "Fresh Curd (दही)", "qty": "400 g", "price": 40, "brand": "Amul Masti", "emoji": "🥛", "search": "curd"},
+            {"name": "Green Chillies & Coriander", "qty": "1 bunch", "price": 20, "brand": "Farm Fresh", "emoji": "🌿", "search": "coriander"},
         ]
     },
     1: {
         "day": "Tue",
         "full_day": "Tuesday",
         "dinner": "Paneer Butter Masala (for 3) + Roti",
+        "hero_search": "Paneer",
         "groceries": [
-            {"name": "Fresh Malai Paneer", "qty": "400 g", "price": 170, "brand": "Mother Dairy", "emoji": "🧀"},
-            {"name": "Hybrid Tomato (टमाटर)", "qty": "500 g", "price": 32, "brand": "Farm Fresh", "emoji": "🍅"},
-            {"name": "Fresh Cream", "qty": "200 ml", "price": 65, "brand": "Amul", "emoji": "🍶"},
-            {"name": "Amul Butter", "qty": "100 g", "price": 58, "brand": "Amul", "emoji": "🧈"},
+            {"name": "Fresh Malai Paneer", "qty": "400 g", "price": 170, "brand": "Mother Dairy", "emoji": "🧀", "search": "paneer"},
+            {"name": "Hybrid Tomato (टमाटर)", "qty": "500 g", "price": 32, "brand": "Farm Fresh", "emoji": "🍅", "search": "tomato"},
+            {"name": "Fresh Cream", "qty": "200 ml", "price": 65, "brand": "Amul", "emoji": "🍶", "search": "amul fresh cream"},
+            {"name": "Amul Butter", "qty": "100 g", "price": 58, "brand": "Amul", "emoji": "🧈", "search": "amul butter"},
         ]
     },
     2: {
         "day": "Wed",
         "full_day": "Wednesday",
         "dinner": "Dal Tadka (for 3) + Jeera Rice (for 3)",
+        "hero_search": "Cauliflower",
         "groceries": [
-            {"name": "Fresh Cauliflower (गोभी)", "qty": "1 pc", "price": 45, "brand": "Local Fresh", "emoji": "🥦"},
-            {"name": "Green Peas (मटर)", "qty": "250 g", "price": 35, "brand": "Peeled Fresh", "emoji": "🫛"},
-            {"name": "Fresh Garlic & Ginger", "qty": "100 g", "price": 30, "brand": "Farm Fresh", "emoji": "🧄"},
+            {"name": "Fresh Cauliflower (गोभी)", "qty": "1 pc", "price": 45, "brand": "Local Fresh", "emoji": "🥦", "search": "cauliflower"},
+            {"name": "Green Peas (मटर)", "qty": "250 g", "price": 35, "brand": "Peeled Fresh", "emoji": "🫛", "search": "green peas"},
+            {"name": "Fresh Garlic & Ginger", "qty": "100 g", "price": 30, "brand": "Farm Fresh", "emoji": "🧄", "search": "ginger garlic"},
         ]
     },
     3: {
         "day": "Thu",
         "full_day": "Thursday",
         "dinner": "Mixed Vegetable Sabzi (for 3) + Phulka",
+        "hero_search": "French Beans",
         "groceries": [
-            {"name": "Carrot & French Beans", "qty": "250 g", "price": 42, "brand": "Farm Fresh", "emoji": "🥕"},
-            {"name": "Fresh Capsicum (शिमला मिर्च)", "qty": "250 g", "price": 28, "brand": "Farm Fresh", "emoji": "🫑"},
-            {"name": "Fresh Lemon & Coriander", "qty": "1 pack", "price": 18, "brand": "Daily Harvest", "emoji": "🍋"},
+            {"name": "Carrot & French Beans", "qty": "250 g", "price": 42, "brand": "Farm Fresh", "emoji": "🥕", "search": "beans carrot"},
+            {"name": "Fresh Capsicum (शिमला मिर्च)", "qty": "250 g", "price": 28, "brand": "Farm Fresh", "emoji": "🫑", "search": "capsicum"},
+            {"name": "Fresh Lemon & Coriander", "qty": "1 pack", "price": 18, "brand": "Daily Harvest", "emoji": "🍋", "search": "lemon"},
         ]
     },
     4: {
         "day": "Fri",
         "full_day": "Friday",
         "dinner": "Rajma Chawal (for 3) + Sirka Onion",
+        "hero_search": "Onion",
         "groceries": [
-            {"name": "Red Onion (प्याज़)", "qty": "1 kg", "price": 48, "brand": "Nashik Fresh", "emoji": "🧅"},
-            {"name": "Ginger-Garlic Paste", "qty": "100 g", "price": 25, "brand": "Catch", "emoji": "🧄"},
-            {"name": "Fresh Tomatoes", "qty": "500 g", "price": 32, "brand": "Farm Fresh", "emoji": "🍅"},
+            {"name": "Red Onion (प्याज़)", "qty": "1 kg", "price": 48, "brand": "Nashik Fresh", "emoji": "🧅", "search": "onion"},
+            {"name": "Ginger-Garlic Paste", "qty": "100 g", "price": 25, "brand": "Catch", "emoji": "🧄", "search": "ginger garlic paste"},
+            {"name": "Fresh Tomatoes", "qty": "500 g", "price": 32, "brand": "Farm Fresh", "emoji": "🍅", "search": "tomato"},
         ]
     },
     5: {
         "day": "Sat",
         "full_day": "Saturday",
         "dinner": "Idli Sambar + Podi",
+        "hero_search": "Idli Batter",
         "groceries": [
-            {"name": "Fresh Idli/Dosa Batter", "qty": "1 kg", "price": 85, "brand": "iD Fresh", "emoji": "🥣"},
-            {"name": "Fresh Grated Coconut", "qty": "100 g", "price": 40, "brand": "Farm Fresh", "emoji": "🥥"},
-            {"name": "Drumstick (सहजन) & Curry Leaves", "qty": "2 pcs", "price": 25, "brand": "Fresh Cut", "emoji": "🌿"},
+            {"name": "Fresh Idli/Dosa Batter", "qty": "1 kg", "price": 85, "brand": "iD Fresh", "emoji": "🥣", "search": "idli batter"},
+            {"name": "Fresh Grated Coconut", "qty": "100 g", "price": 40, "brand": "Farm Fresh", "emoji": "🥥", "search": "coconut"},
+            {"name": "Drumstick & Curry Leaves", "qty": "2 pcs", "price": 25, "brand": "Fresh Cut", "emoji": "🌿", "search": "drumstick curry leaves"},
         ]
     },
     6: {
         "day": "Sun",
         "full_day": "Sunday",
         "dinner": "Special Chole Bhature / Biryani",
+        "hero_search": "Paneer",
         "groceries": [
-            {"name": "Fresh Paneer / Biryani Veggies", "qty": "300 g", "price": 130, "brand": "Fresh Harvest", "emoji": "🧀"},
-            {"name": "Fresh Curd for Raita", "qty": "400 g", "price": 40, "brand": "Amul Masti", "emoji": "🥛"},
-            {"name": "Fresh Mint & Lemon", "qty": "1 pack", "price": 15, "brand": "Farm Fresh", "emoji": "🌱"},
+            {"name": "Fresh Paneer / Veggies", "qty": "300 g", "price": 130, "brand": "Fresh Harvest", "emoji": "🧀", "search": "paneer"},
+            {"name": "Fresh Curd for Raita", "qty": "400 g", "price": 40, "brand": "Amul Masti", "emoji": "🥛", "search": "curd"},
+            {"name": "Fresh Mint & Lemon", "qty": "1 pack", "price": 15, "brand": "Farm Fresh", "emoji": "🌱", "search": "mint pudina"},
         ]
     }
 }
@@ -260,25 +304,56 @@ if "selected_day_idx" not in st.session_state:
     st.session_state["selected_day_idx"] = tomorrow_idx
 
 curr_day_idx = st.session_state["selected_day_idx"]
-active_plan = KITCHENOS_WEEKLY_PLAN[curr_day_idx]
+active_plan = KITCHENAI_WEEKLY_PLAN[curr_day_idx]
 
-# ----------------- TOP NAVBAR (KITCHEN OS) -----------------
+# ----------------- TOP NAVBAR (KITCHENAI) -----------------
 st.markdown(
     """
-    <div class="kos-header">
-        <div class="kos-brand">
-            🍳 Kitchen OS
-            <span class="kos-badge">DINNER AUTOMATION • 7-DAY SCHEDULE</span>
+    <div class="kai-header">
+        <div class="kai-brand">
+            🍳 KitchenAI
+            <span class="kai-badge">AI DINNER AUTOMATION • 7-DAY SCHEDULE</span>
         </div>
         <div style="display: flex; gap: 20px; align-items: center; font-size: 0.95rem; font-weight: 600; color: #475569;">
             <span>How it works</span>
             <span>Features</span>
             <span>Flat 402</span>
+            <span style="color: #059669; font-weight: 700;">● Live Cloud</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+# ----------------- PRESENTATION CHEAT-SHEET EXPANDER -----------------
+with st.expander("🎤 Presentation & Pitch Guide (Click to expand during your demo)"):
+    st.markdown(
+        """
+        <div class="pitch-card">
+            <h4 style="margin-top: 0; color: #0f172a;">🎯 30-Second Elevator Pitch for KitchenAI</h4>
+            <p style="color: #334155; font-size: 0.95rem; line-height: 1.5;">
+                <i>"Flatmates spend 20 minutes every single morning arguing over what to cook for dinner, while their cook calls repeatedly or waits. 
+                <b>KitchenAI solves this forever:</b> A pre-set 7-day dinner calendar runs on autopilot. If anyone wants a change, they swap in 5 seconds. 
+                Every morning at 08:30 AM, KitchenAI automatically dials the cook with a natural Hindi voice call and dispatches the exact fresh sabzi cart to Swiggy Instamart and Blinkit."</i>
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 10px;">
+                <div style="background: white; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <b>1. Zero Brain Drain</b><br>
+                    <span style="font-size: 0.82rem; color: #64748b;">Monday to Sunday dinner is pre-planned. No daily arguments.</span>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <b>2. Timed Voice AI</b><br>
+                    <span style="font-size: 0.82rem; color: #64748b;">Cook gets a natural Hindi call only at 08:30 AM. No spam or hacker calls.</span>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <b>3. 1-Tap Sabzi Cart</b><br>
+                    <span style="font-size: 0.82rem; color: #64748b;">No basic atta/rice. Only perishable veggies calculated & ready to order.</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ----------------- FLATMATE & PREFERENCES BAR (EDITABLE) -----------------
 f_bar1, f_bar2 = st.columns([1.5, 1])
@@ -286,7 +361,7 @@ with f_bar1:
     col_u1, col_u2 = st.columns([1.2, 1])
     with col_u1:
         st.session_state["active_flatmate"] = st.selectbox(
-            "👤 Active Flatmate (Select or Change):",
+            "👤 Active Flatmate (Select or Switch):",
             options=flatmate_names,
             index=0 if st.session_state["active_flatmate"] not in flatmate_names else flatmate_names.index(st.session_state["active_flatmate"])
         )
@@ -305,14 +380,14 @@ with f_bar1:
 
 with f_bar2:
     st.caption("⏰ **Automated Cook Call Schedule:**")
-    st.info(f"Scheduled daily at **{call_time} AM IST**. System will only call at this exact scheduled time.")
+    st.info(f"Scheduled daily at **{call_time} AM IST**. System only calls at this exact scheduled minute.")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ----------------- MAIN LAYOUT (TWO COLUMNS AS IN SCREENSHOT 1 & 2) -----------------
+# ----------------- MAIN LAYOUT (TWO COLUMNS) -----------------
 left_col, right_col = st.columns([1.1, 1.2], gap="large")
 
-# ==================== LEFT COLUMN: KITCHEN OS VALUE ====================
+# ==================== LEFT COLUMN: KITCHENAI VALUE ====================
 with left_col:
     st.markdown(
         """
@@ -321,7 +396,7 @@ with left_col:
                 Decide once.<br>Eat well all week.
             </h1>
             <p style="font-size: 1.15rem; color: #475569; line-height: 1.6; margin-bottom: 28px;">
-                Set up your household once, and Kitchen OS handles the rest. It drafts every night's dinner for you to approve, then informs your cook. No daily typing. No daily thinking.
+                Set up your household once, and <b>KitchenAI</b> handles the rest. It drafts every night's dinner for you to approve, then informs your cook in Hindi. No daily typing. No daily thinking.
             </p>
         </div>
         """,
@@ -347,7 +422,7 @@ with left_col:
             <div style="display: flex; gap: 12px; align-items: flex-start;">
                 <span style="color: #059669; font-size: 1.2rem; font-weight: 900;">✓</span>
                 <div>
-                    <b style="color: #0f172a;">Only fresh sabzis & veggies.</b> Basic atta, rice, and oil are excluded. Instamart cart calculates the fresh items automatically.
+                    <b style="color: #0f172a;">Only fresh sabzis & veggies.</b> Basic atta, rice, and oil are excluded. Instamart & Blinkit cart calculates only fresh perishable items.
                 </div>
             </div>
         </div>
@@ -360,13 +435,13 @@ with left_col:
         f"""
         <div style="background: #1c1917; color: white; padding: 22px; border-radius: 18px; margin-top: 10px;">
             <div style="color: #fbbf24; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
-                GENUINE COOK CALL • TIMED ONLY
+                GENUINE COOK CALL • STRICTLY TIMED
             </div>
             <div style="font-size: 1.35rem; font-weight: 800; margin-bottom: 6px;">
                 "Strictly scheduled calls only."
             </div>
             <div style="color: #d6d3d1; font-size: 0.95rem; margin-bottom: 14px;">
-                The AI will <b>never</b> spam-call the cook when you load or use the app. Calls are only dispatched at the designated schedule time (<b>{call_time} AM</b>).
+                KitchenAI will <b>never</b> spam-call the cook when you load or use the app. Calls are only dispatched at the designated schedule time (<b>{call_time} AM</b>).
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #44403c; padding-top: 12px;">
                 <span style="font-size: 0.9rem; color: #a8a29e;">Cook: <b>{cook_name}</b> ({cook_phone})</span>
@@ -377,7 +452,7 @@ with left_col:
     )
     
     st.markdown("<br>", unsafe_allow_html=True)
-    with st.expander("🛠️ Manual Call Override (Only for emergency / when you explicitly want to call)"):
+    with st.expander("🛠️ Manual Call Override (Only for emergency / manual test)"):
         st.caption("This button will only dial when you manually click it:")
         if st.button("📞 Manually Call Cook Now", type="secondary", use_container_width=True):
             script_text = (
@@ -403,7 +478,7 @@ with right_col:
             <div class="wa-header">
                 <div style="font-size: 1.8rem;">🍳</div>
                 <div>
-                    <p class="wa-header-title">Kitchen OS</p>
+                    <p class="wa-header-title">KitchenAI</p>
                     <p class="wa-header-sub">online • Asia/Kolkata</p>
                 </div>
             </div>
@@ -464,7 +539,7 @@ with right_col:
             unsafe_allow_html=True,
         )
 
-        # 3 Kitchen OS Actions
+        # 3 KitchenAI Actions
         act1, act2, act3 = st.columns(3)
         with act1:
             if st.button("↳ Approve week", use_container_width=True):
@@ -501,10 +576,6 @@ with right_col:
     gst = 8
     grand_total = items_total + handling_fee + gst
     
-    # Combined search query for quick commerce
-    sabzi_names_only = [g["name"].split("(")[0].strip() for g in groceries]
-    all_sabzis_query = urllib.parse.quote(" ".join(sabzi_names_only))
-    
     st.markdown(
         f"""
         <div class="instamart-card">
@@ -516,35 +587,40 @@ with right_col:
                 <span class="im-badge">CALCULATED FOR DINNER</span>
             </div>
             
-            <b style="font-size: 1.05rem; color: #0f172a; margin-bottom: 8px; display: block;">
+            <b style="font-size: 1.05rem; color: #0f172a; margin-bottom: 6px; display: block;">
                 Fresh Sabzis Needed for {active_plan['dinner']}
             </b>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;">
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px;">
                 Excludes basic atta, rice, and cooking oil. Only perishable vegetables & dairy needed for dinner:
             </p>
         """,
         unsafe_allow_html=True,
     )
     
-    # Beautiful Sabzi Rows with Emojis
+    # Interactive Individual Sabzi Rows with Direct 1-Click Launchers
     for g in groceries:
-        search_q = urllib.parse.quote(f"fresh {g['name']}")
-        instamart_item_url = f"https://www.swiggy.com/instamart/search?custom_back=true&query={search_q}"
-        blinkit_item_url = f"https://blinkit.com/s/?q={search_q}"
+        search_query = urllib.parse.quote(g.get("search", g["name"].split("(")[0].strip()))
+        swiggy_url = f"https://www.swiggy.com/instamart/search?custom_back=true&query={search_query}"
+        blinkit_url = f"https://blinkit.com/s/?q={search_query}"
         
         st.markdown(
             f"""
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.4rem;">{g.get('emoji', '🥦')}</span>
+                    <span style="font-size: 1.35rem;">{g.get('emoji', '🥦')}</span>
                     <div>
                         <b style="color: #1e293b; font-size: 0.95rem;">{g['name']}</b> 
                         <span style="color: #64748b; font-size: 0.85rem;">({g['qty']})</span>
-                        <div style="font-size: 0.75rem; color: #94a3b8;">{g['brand']}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">{g['brand']} • ₹{g['price']}</div>
                     </div>
                 </div>
-                <div style="text-align: right;">
-                    <b style="color: #0f172a; font-size: 0.95rem;">₹{g['price']}</b>
+                <div style="display: flex; gap: 8px;">
+                    <a href="{swiggy_url}" target="_blank" class="item-link-btn swiggy-btn" title="Open on Swiggy Instamart">
+                        🟠 Swiggy
+                    </a>
+                    <a href="{blinkit_url}" target="_blank" class="item-link-btn blinkit-btn" title="Open on Blinkit">
+                        🟡 Blinkit
+                    </a>
                 </div>
             </div>
             """,
@@ -574,20 +650,30 @@ with right_col:
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 1-Tap Delivery Launchers
-    st.write("🛒 **1-Tap Open & Pay (Direct Cart Search):**")
-    btn1, btn2 = st.columns(2)
+    # Store Launchers
+    st.write("🛒 **Open Quick Commerce Apps Directly:**")
+    hero_search = urllib.parse.quote(active_plan.get("hero_search", "fresh vegetables"))
+    btn1, btn2, btn3 = st.columns(3)
     with btn1:
-        st.link_button(
-            "🟠 Open Swiggy Instamart Cart",
-            f"https://www.swiggy.com/instamart/search?custom_back=true&query={all_sabzis_query}",
-            use_container_width=True
-        )
+        st.link_button("🟠 Swiggy Instamart", f"https://www.swiggy.com/instamart/search?custom_back=true&query={hero_search}", use_container_width=True)
     with btn2:
-        st.link_button(
-            "🟡 Open Blinkit Cart",
-            f"https://blinkit.com/s/?q={all_sabzis_query}",
-            use_container_width=True
-        )
+        st.link_button("🟡 Blinkit", f"https://blinkit.com/s/?q={hero_search}", use_container_width=True)
+    with btn3:
+        st.link_button("⚡ Zepto", "https://www.zeptonow.com", use_container_width=True)
+
+    # Presentation Demo: Interactive 1-Tap Auto-Checkout Simulation
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.expander("⚡ Live Demo: 1-Tap Autonomous Checkout (Presentation Pitch)", expanded=True):
+        st.caption("Showcase the seamless checkout experience to judges/audience:")
+        if st.button("🚀 Demo Instant Auto-Pay & Dispatch", key="demo_pay_btn", type="primary", use_container_width=True):
+            status_box = st.empty()
+            status_box.info("Connecting to Quick Commerce Network & Dark Store...")
+            time.sleep(0.5)
+            status_box.info("🛒 Compiling fresh sabzis for " + active_plan['dinner'] + "...")
+            time.sleep(0.5)
+            status_box.info(f"💳 Applying Flat UPI AutoPay (₹{grand_total} split across flatmates = ₹{round(grand_total/len(flatmate_names))}/person)...")
+            time.sleep(0.5)
+            status_box.success("🎉 Order Placed & Confirmed! Delivery Partner assigned (ETA: 11 mins 🛵)")
+            st.balloons()
 
     st.markdown("</div>", unsafe_allow_html=True)

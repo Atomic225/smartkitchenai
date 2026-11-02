@@ -49,7 +49,7 @@ def require_auth() -> str | None:
         st.markdown(
             """
             <div style="background: white; border: 1px solid #dce6df; border-radius: 16px; padding: 24px; max-width: 480px; margin: 2rem auto; text-align: center;">
-                <h2 style="font-family: Georgia, serif; color: #1f3d2b; margin-top: 0;">🔒 Smart Kitchen</h2>
+                <h2 style="font-family: Georgia, serif; color: #1f3d2b; margin-top: 0;">🔒 KitchenAI</h2>
                 <p style="color: #4b6354; font-size: 0.95rem;">Enter your flat's passcode to unlock the kitchen dashboard.</p>
             </div>
             """,
