@@ -144,14 +144,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- 7-DAY DEFAULT KITCHENOS PLAN -----------------
+# ----------------- 7-DAY DEFAULT KITCHENOS PLAN (DINNER ONLY) -----------------
 KITCHENOS_WEEKLY_PLAN = {
     0: {
         "day": "Mon",
         "full_day": "Monday",
-        "breakfast": "Poha (for 3)",
-        "lunch": "Dal tadka (for 3) + Rice (for 3)",
-        "dinner": "Aloo Paratha (for 3) + Dahi (200g)",
+        "dinner": "Aloo Paratha (for 3) + Fresh Dahi",
         "groceries": [
             {"name": "Potato (आलू)", "qty": "1 kg", "price": 38, "brand": "Fresh Harvest"},
             {"name": "Fresh Curd (दही)", "qty": "400 g", "price": 40, "brand": "Amul Masti"},
@@ -161,9 +159,7 @@ KITCHENOS_WEEKLY_PLAN = {
     1: {
         "day": "Tue",
         "full_day": "Tuesday",
-        "breakfast": "Upma (for 3)",
-        "lunch": "Mixed Veg Sabzi (for 3) + Roti (9)",
-        "dinner": "Paneer Butter Masala (for 3) + Roti (9)",
+        "dinner": "Paneer Butter Masala (for 3) + Roti",
         "groceries": [
             {"name": "Fresh Malai Paneer", "qty": "400 g", "price": 170, "brand": "Mother Dairy"},
             {"name": "Hybrid Tomato (टमाटर)", "qty": "500 g", "price": 32, "brand": "Farm Fresh"},
@@ -174,8 +170,6 @@ KITCHENOS_WEEKLY_PLAN = {
     2: {
         "day": "Wed",
         "full_day": "Wednesday",
-        "breakfast": "Masala Omelette / Bread Poha",
-        "lunch": "Aloo Gobi Matar + Roti",
         "dinner": "Dal Tadka (for 3) + Jeera Rice (for 3)",
         "groceries": [
             {"name": "Fresh Cauliflower (गोभी)", "qty": "1 pc", "price": 45, "brand": "Local Fresh"},
@@ -186,9 +180,7 @@ KITCHENOS_WEEKLY_PLAN = {
     3: {
         "day": "Thu",
         "full_day": "Thursday",
-        "breakfast": "Idli Sambar (for 3)",
-        "lunch": "Rajma Chawal (for 3)",
-        "dinner": "Mixed Vegetable Sabzi (for 3) + Phulka (9)",
+        "dinner": "Mixed Vegetable Sabzi (for 3) + Phulka",
         "groceries": [
             {"name": "Carrot & French Beans", "qty": "250 g", "price": 42, "brand": "Farm Fresh"},
             {"name": "Drumstick (सहजन)", "qty": "2 pcs", "price": 25, "brand": "Fresh Cut"},
@@ -198,8 +190,6 @@ KITCHENOS_WEEKLY_PLAN = {
     4: {
         "day": "Fri",
         "full_day": "Friday",
-        "breakfast": "Poha with Peanuts",
-        "lunch": "Chole Chawal (for 3)",
         "dinner": "Rajma Chawal (for 3) + Sirka Onion",
         "groceries": [
             {"name": "Red Onion (प्याज़)", "qty": "1 kg", "price": 48, "brand": "Nashik Fresh"},
@@ -210,8 +200,6 @@ KITCHENOS_WEEKLY_PLAN = {
     5: {
         "day": "Sat",
         "full_day": "Saturday",
-        "breakfast": "Masala Dosa + Nariyal Chutney",
-        "lunch": "Dal Makhani (for 3) + Jeera Rice",
         "dinner": "Idli Sambar + Podi",
         "groceries": [
             {"name": "Idli/Dosa Batter", "qty": "1 kg", "price": 85, "brand": "iD Fresh"},
@@ -222,9 +210,7 @@ KITCHENOS_WEEKLY_PLAN = {
     6: {
         "day": "Sun",
         "full_day": "Sunday",
-        "breakfast": "Aloo Puri / Chole Bhature",
-        "lunch": "Special Veg Biryani + Boondi Raita",
-        "dinner": "Light Khichdi / Chef Choice",
+        "dinner": "Special Chole Bhature / Biryani",
         "groceries": [
             {"name": "Paneer / Biryani Veggies", "qty": "300 g", "price": 130, "brand": "Fresh Harvest"},
             {"name": "Curd for Raita", "qty": "400 g", "price": 40, "brand": "Amul Masti"},
@@ -346,8 +332,8 @@ with left_col:
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("📞 Place Hindi Phone Call to Cook Now", type="primary", use_container_width=True):
         script_text = (
-            f"नमस्ते {cook_name}! कल {active_plan['full_day']} के मेनू में दोपहर को {active_plan['lunch']} "
-            f"और रात को {active_plan['dinner']} तय हुआ है। कृपया समय पर आ जाएं। धन्यवाद!"
+            f"नमस्ते {cook_name}! कल {active_plan['full_day']} के रात के खाने में {active_plan['dinner']} "
+            f"तय हुआ है। सामान किचन में उपलब्ध है। कृपया समय पर आ जाएं। धन्यवाद!"
         )
         try:
             res = post("/api/flat-chat/call-cook", json={"script": script_text, "phone": cook_phone})
@@ -411,21 +397,16 @@ with right_col:
 
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Meals for Selected Day
+        # Dinner for Selected Day (Single Daily Decision)
         st.markdown(
             f"""
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.95rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
-                    <span style="color: #64748b; font-weight: 700; width: 110px;">BREAKFAST</span>
-                    <span style="color: #0f172a; font-weight: 700; flex: 1;">{active_plan['breakfast']}</span>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #64748b; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px;">TONIGHT / TOMORROW'S DINNER</span>
+                    <span style="background: #d1fae5; color: #065f46; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 999px;">DEFAULT SET</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.95rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
-                    <span style="color: #64748b; font-weight: 700; width: 110px;">LUNCH</span>
-                    <span style="color: #0f172a; font-weight: 700; flex: 1;">{active_plan['lunch']}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.95rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
-                    <span style="color: #64748b; font-weight: 700; width: 110px;">DINNER</span>
-                    <span style="color: #0f172a; font-weight: 800; color: #047857; flex: 1;">{active_plan['dinner']}</span>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #047857; margin-top: 6px;">
+                    🍽️ {active_plan['dinner']}
                 </div>
             </div>
             <div style="text-align: right; color: #94a3b8; font-size: 0.75rem;">10:05 AM ✓✓</div>
