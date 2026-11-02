@@ -41,14 +41,29 @@ class FlatDecisionSession(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+# 7-day pre-planned default weekly meal schedule (0=Monday, 1=Tuesday, ..., 6=Sunday)
+DEFAULT_WEEKLY_SCHEDULE: dict[int, str] = {
+    0: "Aloo Paratha",          # Monday
+    1: "Paneer Butter Masala",  # Tuesday
+    2: "Dal Tadka with Rice",   # Wednesday
+    3: "Mixed Vegetable Sabzi", # Thursday
+    4: "Rajma Chawal",          # Friday
+    5: "Idli Sambar",           # Saturday
+    6: "Chole Bhature",         # Sunday
+}
+
+
+def get_default_dish_for_day(target_day: date) -> str:
+    """Return pre-set default dish for any day of the week."""
+    weekday_idx = target_day.weekday()
+    return DEFAULT_WEEKLY_SCHEDULE.get(weekday_idx, "Paneer Butter Masala")
+
+
 def get_or_create_evening_session(db: Session, target_day: date) -> FlatDecisionSession:
     """Find or initialize the evening decision session for target_day.
-    Mon-Fri: Tomorrow's Dinner
-    Sat-Sun: Tomorrow's Lunch
+    By default, the 7-day schedule assigns tomorrow's dish automatically!
     """
-    # Check weekday of target_day: 5=Saturday, 6=Sunday
-    is_weekend = target_day.weekday() >= 5
-    slot = "lunch" if is_weekend else "dinner"
+    slot = "dinner"
 
     session = (
         db.query(FlatDecisionSession)
@@ -59,17 +74,45 @@ def get_or_create_evening_session(db: Session, target_day: date) -> FlatDecision
     if session:
         return session
 
-    # Pick 4 recipe options suitable for this slot
-    recipes = db.query(Recipe).all()
-    # Filter or select 4 diverse recipes
+    # Default planned dish for this day of the week
+    default_dish = get_default_dish_for_day(target_day)
+
+    # 4 curated alternative options from kitchen catalog
+    alternative_names = [
+        default_dish,
+        "Paneer Butter Masala",
+        "Aloo Paratha",
+        "Dal Tadka with Rice",
+        "Mixed Vegetable Sabzi",
+        "Rajma Chawal",
+    ]
+    # Deduplicate while preserving order
+    seen = set()
+    curated_names = []
+    for name in alternative_names:
+        if name not in seen:
+            seen.add(name)
+            curated_names.append(name)
+        if len(curated_names) == 4:
+            break
+
+    recipes = db.query(Recipe).filter(Recipe.name.in_(curated_names)).all()
+    recipe_map = {r.name: r for r in recipes}
+
     selected_options = []
-    for r in recipes[:4]:
-        selected_options.append({"id": r.id, "name": r.name, "name_hi": r.name_hi})
+    for name in curated_names:
+        rec = recipe_map.get(name)
+        selected_options.append({
+            "id": rec.id if rec else 0,
+            "name": name,
+            "name_hi": rec.name_hi if rec else "",
+        })
 
     session = FlatDecisionSession(
         target_date=target_day,
         meal_slot=slot,
-        stage="choosing_meal",
+        stage="waiting_grocery",  # Pre-selected by default!
+        selected_recipe_name=default_dish,
         options_json=json.dumps(selected_options),
         last_nudge_at=now_local().replace(tzinfo=None),
         nudge_count=1,

@@ -36,14 +36,29 @@ def get_current_session(db: Session = Depends(get_db)):
     cook_name = cook.name if cook else "Cook"
     cook_phone = cook.phone if (cook and cook.phone) else ""
 
-    # Get selected recipe details and ingredients
-    selected_ingredients = []
-    hindi_name = ""
+    # Filter for fresh sabzis, vegetables, and perishable dairy only (ignore basic pantry items)
+    PANTRY_BASICS = {
+        "wheat flour", "atta", "rice", "basmati rice", "salt", "oil", "water",
+        "turmeric", "cumin", "mustard seeds", "red chilli", "haldi", "jeera",
+        "sugar", "tea leaves", "rava", "toor dal", "moong dal", "maida",
+        "olive oil", "baking soda", "whole spices", "sambar powder", "chole masala",
+        "rajma masala", "biryani masala", "chilli flakes", "kasuri methi"
+    }
+
+    fresh_sabzis = []
     if session.selected_recipe_name:
         r = db.query(Recipe).filter(Recipe.name.ilike(session.selected_recipe_name)).first()
         if r:
             selected_ingredients = r.ingredients or []
             hindi_name = r.name_hi or ""
+            for item in selected_ingredients:
+                name_clean = item.get("name", "").strip().lower()
+                if name_clean and name_clean not in PANTRY_BASICS:
+                    fresh_sabzis.append(item)
+
+    # Spoken fresh sabzis for cook script
+    sabzi_names = [s.get("name", "") for s in fresh_sabzis[:3]]
+    sabzi_hint = f"सब्जी में {', '.join(sabzi_names)} तैयार है।" if sabzi_names else "किचन में सारा सामान उपलब्ध है।"
 
     # Generate natural Hindi speech script ready for the cook call
     dish_display = f"{session.selected_recipe_name} ({hindi_name})" if hindi_name else session.selected_recipe_name
@@ -52,8 +67,8 @@ def get_current_session(db: Session = Depends(get_db)):
 
     if session.selected_recipe_name:
         default_script = (
-            f"नमस्ते {cook_name}! कल {day_str} को {slot_hi} में {dish_display} बनाना तय हुआ है। "
-            f"किचन में सारा सामान उपलब्ध है। कृपया समय पर आकर बना दें। धन्यवाद!"
+            f"नमस्ते {cook_name}! कल {day_str} को {slot_hi} में {dish_display} बनाना है। "
+            f"{sabzi_hint} कृपया समय पर आकर बना दें। धन्यवाद!"
         )
     else:
         default_script = (
@@ -69,6 +84,7 @@ def get_current_session(db: Session = Depends(get_db)):
         "selected_recipe_name": session.selected_recipe_name,
         "selected_recipe_hindi": hindi_name,
         "selected_ingredients": selected_ingredients,
+        "fresh_sabzis": fresh_sabzis,
         "options": options,
         "cook_name": cook_name,
         "cook_phone": cook_phone,

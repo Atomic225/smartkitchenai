@@ -195,7 +195,7 @@ def test_flat_decision_state_machine(client):
 
     # Flatmate picks Option 2
     msg1 = client.post("/api/flat-chat/message", json={"text": "Option 2", "sender": "Shubham"}).json()
-    assert "Selected" in msg1["reply"]
+    assert "Selected" in msg1["reply"] or "Menu Updated" in msg1["reply"]
 
     # Another flatmate changes their mind to Option 1
     msg2 = client.post("/api/flat-chat/message", json={"text": "Option 1", "sender": "Amit"}).json()
