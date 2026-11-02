@@ -130,13 +130,6 @@ def start_scheduler() -> BackgroundScheduler:
 
     scheduler.start()
     _scheduler = scheduler
-    db = SessionLocal()
-    try:
-        job_generate_weekly_menu(db)
-        job_grocery_reminders(db)
-        job_chef_calls(db)
-    finally:
-        db.close()
     return scheduler
 
 
