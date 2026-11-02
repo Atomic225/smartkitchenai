@@ -661,6 +661,85 @@ with right_col:
     with btn3:
         st.link_button("⚡ Zepto", "https://www.zeptonow.com", use_container_width=True)
 
+    # ----------------- TEST AUTO-PAY WITH 1 ITEM -----------------
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.expander("🧪 Test Auto-Pay with 1 Item (Real UPI / Single-Item Test)", expanded=True):
+        st.markdown(
+            """
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; margin-bottom: 14px;">
+                <b style="color: #0f172a; font-size: 1.05rem;">💳 1-Item Auto-Pay & Checkout Tester</b>
+                <p style="color: #64748b; font-size: 0.85rem; margin: 4px 0 0 0;">
+                    Test how the automated payment and single-item dispatch works with real UPI or quick commerce.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        
+        test_col1, test_col2 = st.columns([1.5, 1])
+        with test_col1:
+            item_options = {
+                "₹1 Token Test (Safest for real UPI test)": {"price": 1, "query": "paneer", "name": "₹1 KitchenAI Verification Token"},
+                "Fresh Malai Paneer (400g)": {"price": 170, "query": "paneer", "name": "Fresh Malai Paneer"},
+                "Amul Butter (100g)": {"price": 58, "query": "amul butter", "name": "Amul Butter"},
+                "Potato / Aloo (1kg)": {"price": 38, "query": "potato", "name": "Fresh Potato"},
+                "Hybrid Tomato (500g)": {"price": 32, "query": "tomato", "name": "Hybrid Tomato"},
+            }
+            selected_test_label = st.selectbox("1. Choose Item to Test:", list(item_options.keys()))
+            chosen_item = item_options[selected_test_label]
+            
+            custom_upi = st.text_input("2. Flat UPI VPA for Auto-Debit:", value="kitchenai@upi", help="Enter your UPI ID or test VPA")
+        
+        with test_col2:
+            st.metric("Test Item Amount", f"₹{chosen_item['price']}", delta="AutoPay Enabled")
+            st.caption("Includes direct UPI Intent link + QR code")
+            
+        test_btn = st.button(f"⚡ Generate 1-Item Auto-Pay for ₹{chosen_item['price']}", type="primary", use_container_width=True)
+        
+        if test_btn or st.session_state.get("active_test_item") == selected_test_label:
+            st.session_state["active_test_item"] = selected_test_label
+            
+            # Real UPI Intent URL
+            upi_note = urllib.parse.quote(f"KitchenAI {chosen_item['name']}")
+            upi_intent_url = f"upi://pay?pa={custom_upi}&pn=KitchenAI&am={chosen_item['price']}&cu=INR&tn={upi_note}"
+            qr_encoded = urllib.parse.quote(upi_intent_url)
+            qr_img_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={qr_encoded}"
+            
+            st.markdown("---")
+            q_col1, q_col2 = st.columns([1, 1.3])
+            with q_col1:
+                st.image(qr_img_url, caption=f"Scan to Pay ₹{chosen_item['price']} (GPay/PhonePe)", width=180)
+            with q_col2:
+                st.markdown(
+                    f"""
+                    <div style="font-size: 0.9rem; line-height: 1.6;">
+                        <b>Item:</b> {chosen_item['name']}<br>
+                        <b>AutoPay Amount:</b> <span style="color: #ea580c; font-weight: 800;">₹{chosen_item['price']}</span><br>
+                        <b>Target VPA:</b> <code>{custom_upi}</code><br>
+                        <b>Status:</b> <span style="background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.78rem;">UPI MANDATE READY</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.link_button("📲 Tap to Pay via UPI (Mobile GPay/PhonePe)", upi_intent_url, use_container_width=True)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.write(f"🛒 **Direct Quick Commerce 1-Item Links for '{chosen_item['name']}':**")
+            single_swiggy_url = f"https://www.swiggy.com/instamart/search?custom_back=true&query={urllib.parse.quote(chosen_item['query'])}"
+            single_blinkit_url = f"https://blinkit.com/s/?q={urllib.parse.quote(chosen_item['query'])}"
+            
+            lnk_col1, lnk_col2 = st.columns(2)
+            with lnk_col1:
+                st.link_button(f"🟠 Open '{chosen_item['query']}' on Swiggy Instamart", single_swiggy_url, use_container_width=True)
+            with lnk_col2:
+                st.link_button(f"🟡 Open '{chosen_item['query']}' on Blinkit", single_blinkit_url, use_container_width=True)
+                
+            if st.button("✅ Mark Payment as Verified & Trigger Dispatch", type="secondary", use_container_width=True):
+                st.success(f"🎉 Payment of ₹{chosen_item['price']} verified for {chosen_item['name']}! Auto-dispatch simulated.")
+                st.balloons()
+
     # Presentation Demo: Interactive 1-Tap Auto-Checkout Simulation
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("⚡ Live Demo: 1-Tap Autonomous Checkout (Presentation Pitch)", expanded=True):
